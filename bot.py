@@ -15,11 +15,9 @@ load_dotenv()
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
 # ================== НАЛАШТУВАННЯ ==================
-API_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-
 if not API_TOKEN:
-    print("⚠️ BOT_TOKEN is not set")
+    print("❌ BOT_TOKEN is not set, bot will not start")
+    exit(1)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -741,4 +739,5 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
