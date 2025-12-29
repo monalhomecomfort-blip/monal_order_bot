@@ -13,6 +13,7 @@ from aiogram.utils import executor
 
 # ⬇️ СПОЧАТКУ env
 load_dotenv()
+print("DEBUG BOT_TOKEN =", os.getenv("BOT_TOKEN"))
 
 # ⬇️ ПОТІМ змінні
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -745,6 +746,7 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
 
