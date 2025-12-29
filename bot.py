@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+print("ALL ENV:", dict(os.environ))
 import os
 import requests
 import uuid
@@ -744,6 +745,7 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
 
