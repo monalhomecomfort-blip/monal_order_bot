@@ -21,8 +21,7 @@ MONO_TOKEN = os.getenv("MONO_TOKEN")
 
 # ⬇️ ПЕРЕВІРКА
 if not API_TOKEN:
-    print("❌ BOT_TOKEN is not set, stopping bot")
-    exit(1)
+    print("⚠️ BOT_TOKEN not found at startup (expected on runtime)")
 
 # ⬇️ І ТІЛЬКИ ТЕПЕР ініціалізація
 bot = Bot(token=API_TOKEN)
@@ -745,6 +744,7 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
 
