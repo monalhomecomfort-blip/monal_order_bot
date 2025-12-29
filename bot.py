@@ -3,7 +3,6 @@ import os
 import requests
 import uuid
 
-from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
@@ -12,7 +11,6 @@ from aiogram.types import (
 from aiogram.utils import executor
 
 # ⬇️ СПОЧАТКУ env
-load_dotenv()
 print("DEBUG BOT_TOKEN =", os.getenv("BOT_TOKEN"))
 
 # ⬇️ ПОТІМ змінні
@@ -746,6 +744,7 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
 
