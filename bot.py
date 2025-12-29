@@ -737,16 +737,8 @@ async def mono_webhook(request):
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
-    app = web.Application()
-    app.router.add_post("/webhook/mono", mono_webhook)
-
-    # запускаємо webhook сервер + бот
-    loop = executor.start_polling(
+    executor.start_polling(
         dp,
-        skip_updates=True,
-        on_startup=None,
-        on_shutdown=None
+        skip_updates=True
     )
-
-    web.run_app(app, port=8080)
 
