@@ -11,14 +11,20 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
+# ⬇️ СПОЧАТКУ env
 load_dotenv()
+
+# ⬇️ ПОТІМ змінні
+API_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
-# ================== НАЛАШТУВАННЯ ==================
+# ⬇️ ПЕРЕВІРКА
 if not API_TOKEN:
-    print("❌ BOT_TOKEN is not set, bot will not start")
+    print("❌ BOT_TOKEN is not set, stopping bot")
     exit(1)
 
+# ⬇️ І ТІЛЬКИ ТЕПЕР ініціалізація
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -739,5 +745,6 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
