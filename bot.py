@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-print("ALL ENV:", dict(os.environ))
 import requests
 import uuid
 
@@ -11,19 +10,17 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
-# ⬇️ СПОЧАТКУ env
+# DEBUG (можеш залишити тимчасово)
 print("DEBUG BOT_TOKEN =", os.getenv("BOT_TOKEN"))
 
-# ⬇️ ПОТІМ змінні
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
-# ⬇️ ПЕРЕВІРКА
 if not API_TOKEN:
-    print("⚠️ BOT_TOKEN not found at startup (expected on runtime)")
+    print("❌ BOT_TOKEN is missing at runtime")
+    exit(1)
 
-# ⬇️ І ТІЛЬКИ ТЕПЕР ініціалізація
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
@@ -744,6 +741,7 @@ if __name__ == "__main__":
         dp,
         skip_updates=True
     )
+
 
 
 
