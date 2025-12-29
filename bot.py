@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import requests
 import uuid
@@ -10,19 +9,16 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
-# DEBUG (можеш залишити тимчасово)
-print("DEBUG BOT_TOKEN =", os.getenv("BOT_TOKEN"))
-
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
 if not API_TOKEN:
-    print("❌ BOT_TOKEN is missing at runtime")
-    exit(1)
+    raise RuntimeError("BOT_TOKEN missing at runtime")
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
+
 
 # ================== ДАНІ ==================
 CATEGORIES = {
@@ -737,10 +733,9 @@ async def mono_webhook(request):
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
-    executor.start_polling(
-        dp,
-        skip_updates=True
-    )
+    executor.start_polling(dp, skip_updates=True)
+
+
 
 
 
