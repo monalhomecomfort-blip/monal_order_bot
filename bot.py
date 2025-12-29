@@ -19,7 +19,7 @@ API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
 if not API_TOKEN:
-    raise ValueError("BOT_TOKEN не заданий у .env")
+    print("⚠️ BOT_TOKEN is not set")
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -749,3 +749,4 @@ if __name__ == "__main__":
     )
 
     web.run_app(app, port=8080)
+
