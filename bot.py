@@ -731,18 +731,22 @@ async def mono_webhook(request):
     return web.Response(text="ok")
 
 # ================== ЗАПУСК ==================
+# ================== ЗАПУСК ==================
 if __name__ == "__main__":
+    from threading import Thread
+
+    def start_bot():
+        executor.start_polling(
+            dp,
+            skip_updates=True
+        )
+
     app = web.Application()
     app.router.add_post("/webhook/mono", mono_webhook)
 
-    async def on_startup(_):
-        asyncio.create_task(
-            executor.start_polling(
-                dp,
-                skip_updates=True
-            )
-        )
+    # стартуємо polling у окремому потоці
+    Thread(target=start_bot, daemon=True).start()
 
-    app.on_startup.append(on_startup)
-
+    # стартуємо HTTP сервер (mono webhook)
     web.run_app(app, port=8080)
+
