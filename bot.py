@@ -725,29 +725,65 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     return data["pageUrl"]
 
 # ================== MONO WEBHOOK ==================
-# ================== MONO WEBHOOK ==================
 async def mono_webhook(request):
     data = await request.json()
-
     print("💰 MONO WEBHOOK DATA:", data)
 
     reference = data.get("reference")
+    status = data.get("status")
 
     if not reference:
         print("❌ No reference in payload")
         return web.Response(text="no reference", status=400)
 
-    await bot.send_message(
-        ADMIN_ID,
-        f"💳 *ОПЛАТА ПІДТВЕРДЖЕНА*\n"
-        f"🧾 ref: `{reference}`\n"
-        f"📦 status: {data.get('status')}\n"
-        f"💰 amount: {data.get('finalAmount', data.get('amount'))}",
-        parse_mode="Markdown"
-    )
+    if reference not in pending_payments:
+        print("❌ Reference not found in pending_payments:", reference)
+        return web.Response(text="unknown reference", status=200)
 
-    return web.Response(text="ok")
+    # беремо збережене замовлення
+    order = pending_payments[reference]
+    user_id = order["user_id"]
+    cart = order["cart"]
+    checkout = order["checkout"]
+    payment_type = order["payment_type"]
 
+    # цікавить ТІЛЬКИ успішна оплата
+    if status != "success":
+        return web.Response(text="ok", status=200)
+
+    # --------- формуємо повідомлення адміну ---------
+    text = "✅ *ОПЛАТУ ОТРИМАНО*\n\n"
+
+    text += f"👤 *{checkout.get('name','—')}*\n"
+    text += f"📞 {checkout.get('phone','—')}\n"
+    text += f"📦 {checkout.get('delivery','—')}\n"
+    text += f"💳 {payment_type}\n\n"
+
+    total = 0
+    text += "🛒 *Товари:*\n"
+
+    for item in cart.values():
+        if item.get("type") == "discovery":
+            text += (
+                f"🎁 {item['name']} — {item['price']} грн\n" +
+                "\n".join([f"  • {a}" for a in item["aromas"]]) +
+                "\n\n"
+            )
+            total += item["price"]
+        else:
+            qty = item.get("qty", 1)
+            text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
+            total += item["price"] * qty
+
+    text += f"\n💰 *Сума:* {total} грн"
+    text += f"\n🧾 ref: `{reference}`"
+
+    await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
+
+    # прибираємо з черги
+    pending_payments.pop(reference, None)
+
+    return web.Response(text="ok", status=200)
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
@@ -759,6 +795,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
