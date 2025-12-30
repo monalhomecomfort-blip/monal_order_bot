@@ -709,48 +709,29 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     return data["pageUrl"]
 
 # ================== MONO WEBHOOK ==================
+# ================== MONO WEBHOOK ==================
 async def mono_webhook(request):
-    try:
-        data = await request.json()
-        print("💰 MONO WEBHOOK DATA:", data)
+    data = await request.json()
 
-        payload = data.get("data", {})
-        reference = payload.get("reference")
-        status = payload.get("status")
+    print("💰 MONO WEBHOOK DATA:", data)
 
-        if not reference:
-            print("❌ No reference in payload")
-            return web.Response(text="no reference", status=200)
+    reference = data.get("reference")
 
-        if status != "success":
-            print("⚠️ Payment not successful yet")
-            return web.Response(text="ignored", status=200)
+    if not reference:
+        print("❌ No reference in payload")
+        return web.Response(text="no reference", status=400)
 
-        # шукаємо замовлення
-        for uid, session in user_sessions.items():
-            checkout = session.get("checkout")
-            if not checkout:
-                continue
+    await bot.send_message(
+        ADMIN_ID,
+        f"💳 *ОПЛАТА ПІДТВЕРДЖЕНА*\n"
+        f"🧾 ref: `{reference}`\n"
+        f"📦 status: {data.get('status')}\n"
+        f"💰 amount: {data.get('finalAmount', data.get('amount'))}",
+        parse_mode="Markdown"
+    )
 
-            if checkout.get("invoice_ref") == reference:
-                checkout["paid"] = True
+    return web.Response(text="ok")
 
-                await bot.send_message(
-                    ADMIN_ID,
-                    f"💳 *ОПЛАЧЕНО*\n"
-                    f"👤 {checkout.get('name','—')}\n"
-                    f"📞 {checkout.get('phone','—')}\n"
-                    f"📦 {checkout.get('delivery','—')}\n"
-                    f"🧾 ref: `{reference}`",
-                    parse_mode="Markdown"
-                )
-                break
-
-        return web.Response(text="ok", status=200)
-
-    except Exception as e:
-        print("🔥 MONO WEBHOOK ERROR:", e)
-        return web.Response(text="error", status=200)
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
@@ -762,6 +743,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
