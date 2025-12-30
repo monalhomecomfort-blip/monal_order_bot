@@ -15,11 +15,11 @@ API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
-if not API_TOKEN:
-    raise RuntimeError("BOT_TOKEN missing")
+print("DEBUG BOT_TOKEN =", API_TOKEN)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
+
 
 # ================== ДАНІ ==================
 CATEGORIES = {
@@ -697,4 +697,5 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
