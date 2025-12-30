@@ -692,17 +692,14 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     }
 
     payload = {
-        "amount": int(amount * 100),  # mono працює в копійках
+        "amount": int(amount * 100),
         "ccy": 980,
         "merchantPaymInfo": {
             "reference": invoice_ref,
             "destination": description
         },
-        # ⬇️ ПІСЛЯ ОПЛАТИ ЛЮДИНУ ПОВЕРНЕ В БОТА
         "redirectUrl": "https://t.me/monal_order_bot",
-
-        # ⬇️ ЗАГЛУШКА — ПОМІНЯЄМО, КОЛИ БУДЕ RAILWAY
-        "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"        
+        "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -756,6 +753,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
