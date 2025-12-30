@@ -2,7 +2,6 @@
 import os
 import requests
 import uuid
-import asyncio
 
 from aiohttp import web
 
@@ -11,6 +10,7 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton
 )
+
 
 # ================== НАЛАШТУВАННЯ ==================
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -22,6 +22,18 @@ print("DEBUG BOT_TOKEN =", API_TOKEN)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+# ================== TELEGRAM WEBHOOK ==================
+async def telegram_webhook(request: web.Request):
+    data = await request.json()
+    update = types.Update(**data)
+    await dp.process_update(update)
+    return web.Response(text="ok")
+
+# ================== STARTUP ==================
+async def on_startup(app):
+    base_url = os.getenv("RAILWAY_PUBLIC_URL")
+    await bot.set_webhook(f"{base_url}/webhook/telegram")
+    print("✅ Telegram webhook set")
 
 # ================== ДАНІ ==================
 CATEGORIES = {
@@ -730,16 +742,14 @@ async def mono_webhook(request):
     return web.Response(text="ok")
 
 # ================== ЗАПУСК ==================
-async def on_startup(app):
-    print("🚀 App started, webhook ready")
-
-app = web.Application()
-app.router.add_post("/webhook/mono", mono_webhook)
-app.on_startup.append(on_startup)
-
 if __name__ == "__main__":
-    web.run_app(app, port=8080)
+    app = web.Application()
 
+    app.router.add_post("/webhook/telegram", telegram_webhook)
+    app.router.add_post("/webhook/mono", mono_webhook)
 
+    app.on_startup.append(on_startup)
+
+    web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
 
 
