@@ -11,7 +11,6 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton
 )
-from aiogram.utils import executor
 
 # ================== НАЛАШТУВАННЯ ==================
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -731,26 +730,15 @@ async def mono_webhook(request):
     return web.Response(text="ok")
 
 # ================== ЗАПУСК ==================
+async def on_startup(app):
+    print("🚀 App started, webhook ready")
+
+app = web.Application()
+app.router.add_post("/webhook/mono", mono_webhook)
+app.on_startup.append(on_startup)
+
 if __name__ == "__main__":
-    import asyncio
-    from threading import Thread
-
-    def start_bot():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        executor.start_polling(
-            dp,
-            skip_updates=True
-        )
-
-    app = web.Application()
-    app.router.add_post("/webhook/mono", mono_webhook)
-
-    # стартуємо polling у окремому потоці з власним loop
-    Thread(target=start_bot, daemon=True).start()
-
-    # стартуємо HTTP сервер (mono webhook)
     web.run_app(app, port=8080)
+
 
 
