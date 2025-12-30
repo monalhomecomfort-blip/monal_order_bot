@@ -2,6 +2,9 @@
 import os
 import requests
 import uuid
+import asyncio
+
+from aiohttp import web
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
@@ -683,7 +686,7 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
         "redirectUrl": "https://t.me/monal_order_bot",
 
         # ⬇️ ЗАГЛУШКА — ПОМІНЯЄМО, КОЛИ БУДЕ RAILWAY
-        "webHookUrl": "https://example.com/webhook/mono"
+        "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"        
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -693,9 +696,53 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     return data["pageUrl"]
 
 # ================== MONO WEBHOOK ==================
+async def mono_webhook(request):
+    data = await request.json()
+
+    reference = (
+        data.get("merchantPaymInfo", {})
+            .get("reference")
+    )
+
+    if not reference:
+        return web.Response(text="no reference", status=400)
+
+    # шукаємо замовлення
+    for uid, session in user_sessions.items():
+        checkout = session.get("checkout")
+        if not checkout:
+            continue
+
+        if checkout.get("invoice_ref") == reference:
+            checkout["paid"] = True
+
+            # повідомляємо адміна
+            await bot.send_message(
+                ADMIN_ID,
+                f"💳 *ОПЛАЧЕНО*\n"
+                f"👤 {checkout.get('name','—')}\n"
+                f"📞 {checkout.get('phone','—')}\n"
+                f"📦 {checkout.get('delivery','—')}\n"
+                f"🧾 ref: `{reference}`",
+                parse_mode="Markdown"
+            )
+            break
+
+    return web.Response(text="ok")
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    app = web.Application()
+    app.router.add_post("/webhook/mono", mono_webhook)
 
+    async def on_startup(_):
+        asyncio.create_task(
+            executor.start_polling(
+                dp,
+                skip_updates=True
+            )
+        )
 
+    app.on_startup.append(on_startup)
+
+    web.run_app(app, port=8080)
