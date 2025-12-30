@@ -11,15 +11,16 @@ from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton
 )
 
-
 # ================== НАЛАШТУВАННЯ ==================
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
-print("DEBUG BOT_TOKEN =", API_TOKEN)
+if not API_TOKEN:
+    raise RuntimeError("BOT_TOKEN missing")
 
 bot = Bot(token=API_TOKEN)
+Bot.set_current(bot)   # ← ОЦЕ ВИПРАВЛЯЄ ПОМИЛКУ
 dp = Dispatcher(bot)
 
 # ================== TELEGRAM WEBHOOK ==================
@@ -751,5 +752,6 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
