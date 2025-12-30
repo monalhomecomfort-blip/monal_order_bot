@@ -20,8 +20,12 @@ if not API_TOKEN:
     raise RuntimeError("BOT_TOKEN missing")
 
 bot = Bot(token=API_TOKEN)
-Bot.set_current(bot)   # ← ОЦЕ ВИПРАВЛЯЄ ПОМИЛКУ
 dp = Dispatcher(bot)
+
+# ⬇️ КРИТИЧНО ВАЖЛИВО ДЛЯ WEBHOOK
+Bot.set_current(bot)
+Dispatcher.set_current(dp)
+
 
 # ================== TELEGRAM WEBHOOK ==================
 async def telegram_webhook(request: web.Request):
@@ -752,6 +756,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
