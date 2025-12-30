@@ -652,7 +652,7 @@ async def confirm_order(call: types.CallbackQuery):
     admin_text += (
         f"\n💰 *Сума замовлення:* {total_amount} грн\n"
         f"💳 *Оплачено:* {paid_amount} грн\n"
-        f"📦 *Залишок до сплати:* {due_amount} грн"
+        f"📦 *До оплати:* {due_amount} грн"
     )
     
     await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
@@ -803,6 +803,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
