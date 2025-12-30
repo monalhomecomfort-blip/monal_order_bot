@@ -93,7 +93,7 @@ PRODUCTS = {
 }
 
 user_sessions = {}
-
+pending_payments = {}
 
 # ================== DISCOVERY SET ==================
 
@@ -542,6 +542,14 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
+    # ⬇️ ДОДАТИ ОЦЕ
+    pending_payments[invoice_ref] = {
+        "user_id": uid,
+        "cart": session["cart"],
+        "checkout": session["checkout"],
+        "payment_type": "100% оплата"
+    }
+    
     payment_url = create_mono_invoice(
         amount=total,
         description="Оплата замовлення MONAL",
@@ -575,6 +583,14 @@ async def pay_deposit(call: types.CallbackQuery):
     session["checkout"]["invoice_ref"] = invoice_ref
     session["checkout"]["payment"] = "Передплата 150 грн"
     session["checkout"]["paid"] = False
+
+    # ⬇️ ДОДАТИ ОЦЕ
+    pending_payments[invoice_ref] = {
+        "user_id": uid,
+        "cart": session["cart"],
+        "checkout": session["checkout"],
+        "payment_type": "Передплата 150 грн"
+    }
 
     payment_url = create_mono_invoice(
         amount=1,
@@ -743,6 +759,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
