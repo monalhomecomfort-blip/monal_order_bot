@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import requests
 import uuid
@@ -9,16 +10,16 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
-API_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+# ================== НАЛАШТУВАННЯ ==================
+API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
 if not API_TOKEN:
-    raise RuntimeError("BOT_TOKEN missing at runtime")
+    raise RuntimeError("BOT_TOKEN missing")
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
-
 
 # ================== ДАНІ ==================
 CATEGORIES = {
@@ -692,57 +693,8 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     return data["pageUrl"]
 
 # ================== MONO WEBHOOK ==================
-from aiohttp import web
-import json
-
-async def mono_webhook(request):
-    data = await request.json()
-
-    # очікуємо reference = invoice_ref
-    reference = (
-        data.get("merchantPaymInfo", {})
-            .get("reference")
-    )
-
-    if not reference:
-        return web.Response(text="no reference", status=400)
-
-    # шукаємо замовлення
-    for uid, session in user_sessions.items():
-        checkout = session.get("checkout")
-        if not checkout:
-            continue
-
-        if checkout.get("invoice_ref") == reference:
-            checkout["paid"] = True
-
-            # повідомляємо адміна
-            await bot.send_message(
-                ADMIN_ID,
-                f"💳 *ОПЛАЧЕНО*\n"
-                f"👤 {checkout.get('name','—')}\n"
-                f"📞 {checkout.get('phone','—')}\n"
-                f"📦 {checkout.get('delivery','—')}\n"
-                f"🧾 ref: `{reference}`",
-                parse_mode="Markdown"
-            )
-            break
-
-    return web.Response(text="ok")
-
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
-
-
-
-
-
-
-
-
-
-
-
 
