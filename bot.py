@@ -560,8 +560,8 @@ async def pay_deposit(call: types.CallbackQuery):
     session["checkout"]["paid"] = False
 
     payment_url = create_mono_invoice(
-        amount=150,
-        description="Передплата 150 грн — MONAL",
+        amount=1,
+        description="ТЕСТОВА ОПЛАТА 1 грн — MONAL",
         invoice_ref=invoice_ref
     )
 
@@ -739,6 +739,7 @@ app.on_startup.append(on_startup)
 
 if __name__ == "__main__":
     web.run_app(app, port=8080)
+
 
 
 
