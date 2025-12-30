@@ -9,7 +9,7 @@ from aiogram.types import (
 )
 from aiogram.utils import executor
 
-API_TOKEN = os.getenv("BOT_TOKEN")
+API_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
@@ -734,6 +734,7 @@ async def mono_webhook(request):
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
 
 
