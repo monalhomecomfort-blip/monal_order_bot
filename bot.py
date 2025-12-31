@@ -664,15 +664,17 @@ async def confirm_order(call: types.CallbackQuery):
             admin_text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
             total += item["price"] * qty
 
-    total_amount = checkout.get("total_amount", total)
+    # суми з checkout (ВЖЕ ПОРАХОВАНІ)
+    total_amount = checkout.get("total_amount", 0)
     paid_amount = checkout.get("paid_amount", 0)
-    due_amount = checkout.get("due_amount", total_amount)
+    due_amount = checkout.get("due_amount", 0)
 
     admin_text += (
-        f"\n💰 *Сума замовлення:* {total_amount} грн\n"
-        f"💳 *Оплачено:* {paid_amount} грн\n"
-        f"📦 *До оплати:* {due_amount} грн"
+        f"\n💰 Сума замовлення: {total_amount} грн"
+        f"\n💳 Сплачено: {paid_amount} грн"
+        f"\n📦 До оплати: {due_amount} грн"
     )
+
     
     await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
 
@@ -822,6 +824,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
