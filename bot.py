@@ -526,14 +526,13 @@ async def pay_full(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions[uid]
 
+    # рахуємо повну суму
     total = 0
     for item in session["cart"].values():
         if item.get("type") == "discovery":
             total += item["price"]
         else:
             total += item["price"] * item.get("qty", 1)
-
-    import uuid
 
     invoice_ref = str(uuid.uuid4())
 
@@ -542,20 +541,24 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
-    # ⬇️ ДОДАТИ ОЦЕ
+    # ⬇️ КЛЮЧОВЕ: суми
+    session["checkout"]["total_amount"] = total
+    session["checkout"]["paid_amount"] = total
+    session["checkout"]["due_amount"] = 0
+
+    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
     pending_payments[invoice_ref] = {
         "user_id": uid,
         "cart": session["cart"],
         "checkout": session["checkout"],
         "payment_type": "100% оплата"
     }
-    
+
     payment_url = create_mono_invoice(
         amount=total,
         description="Оплата замовлення MONAL",
         invoice_ref=invoice_ref
     )
-
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -577,6 +580,16 @@ async def pay_deposit(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions[uid]
 
+    # рахуємо повну суму замовлення
+    total = 0
+    for item in session["cart"].values():
+        if item.get("type") == "discovery":
+            total += item["price"]
+        else:
+            total += item["price"] * item.get("qty", 1)
+
+    deposit = 150  # 🔴 для тесту можеш поставити 1
+
     invoice_ref = str(uuid.uuid4())
 
     session.setdefault("checkout", {})
@@ -584,7 +597,12 @@ async def pay_deposit(call: types.CallbackQuery):
     session["checkout"]["payment"] = "Передплата 150 грн"
     session["checkout"]["paid"] = False
 
-    # ⬇️ ДОДАТИ ОЦЕ
+    # ⬇️ КЛЮЧОВЕ: суми
+    session["checkout"]["total_amount"] = total
+    session["checkout"]["paid_amount"] = deposit
+    session["checkout"]["due_amount"] = total - deposit
+
+    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
     pending_payments[invoice_ref] = {
         "user_id": uid,
         "cart": session["cart"],
@@ -593,8 +611,8 @@ async def pay_deposit(call: types.CallbackQuery):
     }
 
     payment_url = create_mono_invoice(
-        amount=1,
-        description="ТЕСТОВА ОПЛАТА 1 грн — MONAL",
+        amount=deposit,
+        description="Передплата 150 грн — MONAL",
         invoice_ref=invoice_ref
     )
 
@@ -612,6 +630,7 @@ async def pay_deposit(call: types.CallbackQuery):
     )
 
     await call.answer()
+
 
 
 # ================== CHECKOUT: ПІДТВЕРДЖЕННЯ ==================
@@ -803,6 +822,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
