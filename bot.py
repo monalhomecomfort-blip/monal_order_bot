@@ -774,6 +774,9 @@ async def mono_webhook(request):
     user_id = order["user_id"]
     cart = order["cart"]
     checkout = order["checkout"]
+    total_amount = checkout.get("total_amount", 0)
+    paid_amount = checkout.get("paid_amount", 0)
+    due_amount = checkout.get("due_amount", 0)
     payment_type = order["payment_type"]
 
     # цікавить ТІЛЬКИ успішна оплата
@@ -803,8 +806,12 @@ async def mono_webhook(request):
             qty = item.get("qty", 1)
             text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
             total += item["price"] * qty
-
-    text += f"\n💰 *Сума:* {total} грн"
+    
+    text += (
+        f"\n💰 *Сума замовлення:* {total_amount} грн"
+        f"\n💳 *Сплачено:* {paid_amount} грн"
+        f"\n📦 *До оплати:* {due_amount} грн"
+    )
     text += f"\n🧾 ref: `{reference}`"
 
     await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
@@ -824,6 +831,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
