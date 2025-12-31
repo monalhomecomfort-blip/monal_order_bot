@@ -526,13 +526,14 @@ async def pay_full(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions[uid]
 
-    # рахуємо повну суму
     total = 0
     for item in session["cart"].values():
         if item.get("type") == "discovery":
             total += item["price"]
         else:
             total += item["price"] * item.get("qty", 1)
+
+    import uuid
 
     invoice_ref = str(uuid.uuid4())
 
@@ -541,24 +542,20 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
-    # ⬇️ КЛЮЧОВЕ: суми
-    session["checkout"]["total_amount"] = total
-    session["checkout"]["paid_amount"] = total
-    session["checkout"]["due_amount"] = 0
-
-    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
+    # ⬇️ ДОДАТИ ОЦЕ
     pending_payments[invoice_ref] = {
         "user_id": uid,
         "cart": session["cart"],
         "checkout": session["checkout"],
         "payment_type": "100% оплата"
     }
-
+    
     payment_url = create_mono_invoice(
         amount=total,
         description="Оплата замовлення MONAL",
         invoice_ref=invoice_ref
     )
+
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -580,16 +577,6 @@ async def pay_deposit(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions[uid]
 
-    # рахуємо повну суму замовлення
-    total = 0
-    for item in session["cart"].values():
-        if item.get("type") == "discovery":
-            total += item["price"]
-        else:
-            total += item["price"] * item.get("qty", 1)
-
-    deposit = 150  # 🔴 для тесту можеш поставити 1
-
     invoice_ref = str(uuid.uuid4())
 
     session.setdefault("checkout", {})
@@ -597,12 +584,7 @@ async def pay_deposit(call: types.CallbackQuery):
     session["checkout"]["payment"] = "Передплата 150 грн"
     session["checkout"]["paid"] = False
 
-    # ⬇️ КЛЮЧОВЕ: суми
-    session["checkout"]["total_amount"] = total
-    session["checkout"]["paid_amount"] = deposit
-    session["checkout"]["due_amount"] = total - deposit
-
-    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
+    # ⬇️ ДОДАТИ ОЦЕ
     pending_payments[invoice_ref] = {
         "user_id": uid,
         "cart": session["cart"],
@@ -611,8 +593,8 @@ async def pay_deposit(call: types.CallbackQuery):
     }
 
     payment_url = create_mono_invoice(
-        amount=deposit,
-        description="Передплата 150 грн — MONAL",
+        amount=1,
+        description="ТЕСТОВА ОПЛАТА 1 грн — MONAL",
         invoice_ref=invoice_ref
     )
 
@@ -630,8 +612,6 @@ async def pay_deposit(call: types.CallbackQuery):
     )
 
     await call.answer()
-
-
 
 # ================== CHECKOUT: ПІДТВЕРДЖЕННЯ ==================
 @dp.callback_query_handler(lambda c: c.data == "confirm_order")
@@ -664,16 +644,7 @@ async def confirm_order(call: types.CallbackQuery):
             admin_text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
             total += item["price"] * qty
 
-    # суми з checkout (ВЖЕ ПОРАХОВАНІ)
-    total_amount = checkout.get("total_amount", 0)
-    paid_amount = checkout.get("paid_amount", 0)
-    due_amount = checkout.get("due_amount", 0)
-
-    admin_text += (
-        f"\n💰 Сума замовлення: {total_amount} грн"
-        f"\n💳 Сплачено: {paid_amount} грн"
-        f"\n📦 До оплати: {due_amount} грн"
-    )
+    admin_text += f"\n💰 Сума: {total} грн"
 
     
     await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
@@ -824,6 +795,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
