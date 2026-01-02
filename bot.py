@@ -28,16 +28,6 @@ dp = Dispatcher(bot)
 Bot.set_current(bot)
 Dispatcher.set_current(dp)
 
-async def on_startup(app):
-    await bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="🌐 Сайт",
-            web_app=WebAppInfo(
-                url="https://monalhomecomfort-blip.github.io/monal-glass-v2/index.html"
-            )
-        )
-    )
-
 # ================== TELEGRAM WEBHOOK ==================
 async def telegram_webhook(request: web.Request):
     data = await request.json()
@@ -47,9 +37,22 @@ async def telegram_webhook(request: web.Request):
 
 # ================== STARTUP ==================
 async def on_startup(app):
+    # 1️⃣ Telegram webhook
     base_url = os.getenv("RAILWAY_PUBLIC_URL")
     await bot.set_webhook(f"{base_url}/webhook/telegram")
     print("✅ Telegram webhook set")
+
+    # 2️⃣ Кнопка "Сайт" внизу чату
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🌐 Сайт",
+            web_app=WebAppInfo(
+                url="https://monalhomecomfort-blip.github.io/monal-glass-v2/index.html"
+            )
+        )
+    )
+    print("✅ Menu button set")
+
 
 # ================== ДАНІ ==================
 CATEGORIES = {
@@ -843,6 +846,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
