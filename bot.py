@@ -128,8 +128,16 @@ def categories_keyboard():
 
 def persistent_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("🛒 Почати замовлення"))
+
+    kb.add(
+        KeyboardButton("🛒 Почати замовлення")
+    )
+    kb.add(
+        KeyboardButton("🌐 Сайт", url="https://monalhomecomfort-blip.github.io/monal-glass-v2/index.html")  # ← СЮДИ ТВІЙ URL
+    )
+
     return kb
+
 
 def products_keyboard(cat_key):
     kb = InlineKeyboardMarkup(row_width=1)
@@ -831,6 +839,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
