@@ -11,6 +11,8 @@ from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton
 )
 
+from aiogram.types import MenuButtonWebApp, WebAppInfo
+
 # ================== НАЛАШТУВАННЯ ==================
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
@@ -26,6 +28,15 @@ dp = Dispatcher(bot)
 Bot.set_current(bot)
 Dispatcher.set_current(dp)
 
+async def on_startup(app):
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="🌐 Сайт",
+            web_app=WebAppInfo(
+                url="https://monalhomecomfort-blip.github.io/monal-glass-v2/index.html"
+            )
+        )
+    )
 
 # ================== TELEGRAM WEBHOOK ==================
 async def telegram_webhook(request: web.Request):
@@ -832,6 +843,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
