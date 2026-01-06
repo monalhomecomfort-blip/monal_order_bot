@@ -603,7 +603,7 @@ async def pay_deposit(call: types.CallbackQuery):
         else:
             total += item["price"] * item.get("qty", 1)
 
-    deposit = 1  # 🔴 для тесту можеш поставити 1
+    deposit = 150  # 🔴 для тесту можеш поставити 1
 
     invoice_ref = str(uuid.uuid4())
 
@@ -846,6 +846,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
