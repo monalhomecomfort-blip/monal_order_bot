@@ -47,7 +47,7 @@ async def on_startup(app):
         menu_button=MenuButtonWebApp(
             text="🌐 Сайт",
             web_app=WebAppInfo(
-                url="https://monalhomecomfort-blip.github.io/monal-glass-v2/index.html"
+                url="https://monal.com.ua/"
             )
         )
     )
@@ -758,7 +758,7 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
             "reference": invoice_ref,
             "destination": description
         },
-        "redirectUrl": "https://t.me/monal_order_bot",
+        "redirectUrl": "https://monal.com.ua/",
         "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"
     }
 
@@ -846,6 +846,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
