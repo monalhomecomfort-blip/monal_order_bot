@@ -831,6 +831,10 @@ async def mono_webhook(request):
 
     await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
 
+    # 🔽 ОЧИЩАЄМО КОШИК І CHECKOUT ПІСЛЯ УСПІШНОЇ ОПЛАТИ
+    user_sessions[user_id]["cart"] = {}
+    user_sessions[user_id].pop("checkout", None)
+
     # прибираємо з черги
     pending_payments.pop(reference, None)
 
@@ -846,6 +850,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
