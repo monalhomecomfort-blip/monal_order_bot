@@ -603,7 +603,7 @@ async def pay_deposit(call: types.CallbackQuery):
         else:
             total += item["price"] * item.get("qty", 1)
 
-    deposit = 1  # 🔴 для тесту можеш поставити 1
+    deposit = 150  # 🔴 для тесту можеш поставити 1
 
     invoice_ref = str(uuid.uuid4())
 
@@ -835,6 +835,15 @@ async def mono_webhook(request):
     user_sessions[user_id]["cart"] = {}
     user_sessions[user_id].pop("checkout", None)
 
+    # ✅ ПОВІДОМЛЕННЯ ПОКУПЦЮ: ОПЛАТУ ОТРИМАНО + СТАРТ ЗАНОВО
+    await bot.send_message(
+        user_id,
+        "✅ Оплату отримано!\n\n"
+        "Дякуємо за замовлення 💛\n"
+        "Щоб оформити нове — оберіть категорію нижче 👇",
+        reply_markup=categories_keyboard()
+    )
+
     # прибираємо з черги
     pending_payments.pop(reference, None)
 
@@ -850,6 +859,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
