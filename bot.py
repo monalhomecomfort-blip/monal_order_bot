@@ -65,7 +65,7 @@ CATEGORIES = {
 
 PRODUCTS = {
     "diffusers": [
-        {"id": "d1", "name": "VESPER 200мл", "price": 1},
+        {"id": "d1", "name": "VESPER 200мл", "price": 1590},
         {"id": "d2", "name": "NOCTURNE 200мл", "price": 1590},
         {"id": "d3", "name": "ROSALYA 200мл", "price": 1590},
         {"id": "d4", "name": "DRIFT 200мл", "price": 1590},
@@ -859,6 +859,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
