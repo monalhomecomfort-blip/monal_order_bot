@@ -831,6 +831,26 @@ async def mono_webhook(request):
 
     await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
 
+        # 🧾 ЛОГУЄМО ЗАМОВЛЕННЯ В ORDERS_LOG (через сервер)
+    try:
+        requests.post(
+            "https://monal-mono-pay-production.up.railway.app/log-bot-order",
+            json={
+                "orderId": reference,
+                "totalAmount": total_amount,
+                "paidAmount": paid_amount,
+                "dueAmount": due_amount,
+                "paymentType": payment_type,
+                "buyerName": checkout.get("name", ""),
+                "buyerPhone": checkout.get("phone", ""),
+                "delivery": checkout.get("delivery", ""),
+                "itemsText": text
+            },
+            timeout=5
+        )
+    except Exception as e:
+        print("❌ BOT → ORDERS_LOG ERROR:", e)
+
     # 🔽 ОЧИЩАЄМО КОШИК І CHECKOUT ПІСЛЯ УСПІШНОЇ ОПЛАТИ
     user_sessions[user_id]["cart"] = {}
     user_sessions[user_id].pop("checkout", None)
@@ -859,6 +879,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
