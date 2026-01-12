@@ -794,6 +794,21 @@ async def mono_webhook(request):
     due_amount = checkout.get("due_amount", 0)
     payment_type = order["payment_type"]
 
+    # --------- ТІЛЬКИ ТОВАРИ ДЛЯ ТАБЛИЦІ ---------
+    items_text_list = []
+
+    for item in cart.values():
+        if item.get("type") == "discovery":
+            items_text_list.append(
+                item["name"] + ":\n" + "\n".join(item["aromas"])
+            )
+        else:
+            qty = item.get("qty", 1)
+            items_text_list.append(f'{item["name"]} × {qty}')
+
+    items_text = "\n".join(items_text_list)
+
+
     # цікавить ТІЛЬКИ успішна оплата
     if status != "success":
         return web.Response(text="ok", status=200)
@@ -844,7 +859,7 @@ async def mono_webhook(request):
                 "buyerName": checkout.get("name", ""),
                 "buyerPhone": checkout.get("phone", ""),
                 "delivery": checkout.get("delivery", ""),
-                "itemsText": text
+                "itemsText": items_text
             },
             timeout=5
         )
@@ -879,6 +894,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
