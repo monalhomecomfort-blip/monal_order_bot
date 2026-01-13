@@ -481,7 +481,7 @@ async def checkout_name(m: types.Message):
 
     await m.answer(
         "📞 Поділіться номером телефону отримувача 👇",
-        reply_markup=phone_share_keyboard()
+        reply_markup=share_phone_keyboard()
     )
 
 # ================== CHECKOUT: ОТРИМАНО НОМЕР ==================
@@ -978,6 +978,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
