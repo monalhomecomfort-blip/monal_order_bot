@@ -985,6 +985,46 @@ async def mono_webhook(request):
 
     return web.Response(text="ok", status=200)
 
+# =================== 👑 АДМІН: АКТИВНІ ЗАМОВЛЕННЯ ===========================
+@dp.message_handler(lambda m: m.text == "📦 Активні замовлення")
+async def admin_active_orders(m: types.Message):
+    if m.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        r = requests.get(
+            "https://monal-mono-pay-production.up.railway.app/admin/active-orders",
+            timeout=10
+        )
+        orders = r.json()
+    except Exception as e:
+        await m.answer("❌ Не вдалося отримати замовлення")
+        return
+
+    if not orders:
+        await m.answer("📭 Активних замовлень немає")
+        return
+
+    for o in orders:
+        text = (
+            f"🧾 Замовлення №{o.get('orderId','—')}\n"
+            f"👤 {o.get('buyerName','—')}\n"
+            f"📞 {o.get('buyerPhone','—')}\n"
+            f"📦 {o.get('delivery','—')}\n\n"
+            f"🛒 {o.get('itemsText','—')}\n\n"
+            f"💰 {o.get('totalAmount','—')} грн"
+        )
+
+        kb = InlineKeyboardMarkup()
+        kb.add(
+            InlineKeyboardButton(
+                "✅ Виконано",
+                callback_data=f"order_done:{o.get('orderId')}"
+            )
+        )
+
+        await m.answer(text, reply_markup=kb)
+
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
     app = web.Application()
@@ -995,6 +1035,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
