@@ -102,13 +102,13 @@ PRODUCTS = {
         {"id": "r10", "name": "GREEN HAVEN 275мл", "price": 1300},        
     ],
     "certificates": [
-        {"id": "c1000", "name": "Подарунковий сертифікат 1000 грн", "price": 1000,
+        {"id": "c1000", "name": "Сертифікат 1000 грн", "price": 1000,
             "label": "Сертифікат"},
-        {"id": "c2500", "name": "Подарунковий сертифікат 2500 грн", "price": 2500,
+        {"id": "c2500", "name": "Сертифікат 2500 грн", "price": 2500,
             "label": "Сертифікат"},
-        {"id": "c3500", "name": "Подарунковий сертифікат 3500 грн", "price": 3500,
+        {"id": "c3500", "name": "Сертифікат 3500 грн", "price": 3500,
             "label": "Сертифікат"},
-        {"id": "c5000", "name": "Подарунковий сертифікат 5000 грн", "price": 5000,
+        {"id": "c5000", "name": "Сертифікат 5000 грн", "price": 5000,
             "label": "Сертифікат"},
     ],
     "gifts": [
@@ -227,12 +227,29 @@ def share_phone_keyboard():
     )
     return kb
 
+def admin_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add(
+        KeyboardButton("📦 Активні замовлення"),
+        KeyboardButton("✅ Виконані замовлення")
+    )
+    return kb
 
 # ================== ХЕНДЛЕР/START ==================
 @dp.message_handler(commands=["start"])
 async def start(message: types.Message):
-    user_sessions.setdefault(message.from_user.id, {"cart": {}})
+    uid = message.from_user.id
+    user_sessions.setdefault(uid, {"cart": {}})
 
+    # 👑 АДМІН
+    if uid == ADMIN_ID:
+        await message.answer(
+            "Панель адміністратора 👇",
+            reply_markup=admin_keyboard()
+        )
+        return
+
+    # 👤 КЛІЄНТ
     await message.answer(
         "Натисніть кнопку внизу, щоб почати замовлення 👇",
         reply_markup=persistent_keyboard()
@@ -978,6 +995,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
