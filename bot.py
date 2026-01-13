@@ -60,6 +60,7 @@ CATEGORIES = {
     "home": "🏠 Парфумерія для дому",
     "discovery": "🎁 Discovery set",
     "refill": "♻️ Рефіли для аромадифузерів",
+    "certificates": "🎟 Подарункові сертифікати",
     "gifts": "🎀 Подарункові набори",
 }
 
@@ -99,6 +100,16 @@ PRODUCTS = {
         {"id": "r8", "name": "SHADOW OF FIG 275мл", "price": 1300},
         {"id": "r9", "name": "GOLDEN RUM 275мл", "price": 1300},
         {"id": "r10", "name": "GREEN HAVEN 275мл", "price": 1300},        
+    ],
+    "certificates": [
+        {"id": "c1000", "name": "Подарунковий сертифікат 1000 грн", "price": 1000,
+            "label": "Сертифікат"},
+        {"id": "c2500", "name": "Подарунковий сертифікат 2500 грн", "price": 2500,
+            "label": "Сертифікат"},
+        {"id": "c3500", "name": "Подарунковий сертифікат 3500 грн", "price": 3500,
+            "label": "Сертифікат"},
+        {"id": "c5000", "name": "Подарунковий сертифікат 5000 грн", "price": 5000,
+            "label": "Сертифікат"},
     ],
     "gifts": [
         {"id": "g1", "name": "FAIRYTALE", "price": 3199},
@@ -464,6 +475,12 @@ async def checkout_start(call: types.CallbackQuery):
 async def checkout_name(m: types.Message):
     uid = m.from_user.id
     user_sessions[uid]["checkout"]["name"] = m.text.strip()
+
+    # 👉 ОДРАЗУ переходимо до запиту телефону
+    await m.answer(
+        "📞 Поділіться номером телефону",
+        reply_markup=share_phone_keyboard()
+    )
 
 # ================== CHECKOUT: ТЕЛЕФОН (ПОДІЛИТИСЬ) ==================
 @dp.message_handler(
@@ -964,6 +981,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
