@@ -1025,6 +1025,36 @@ async def admin_active_orders(m: types.Message):
 
         await m.answer(text, reply_markup=kb)
 
+# =================== 👑 АДМІН: ПОМІТИТИ ЯК ВИКОНАНО ===================
+@dp.callback_query_handler(lambda c: c.data.startswith("order_done:"))
+async def admin_mark_done(call: types.CallbackQuery):
+    if call.from_user.id != ADMIN_ID:
+        await call.answer("⛔️ Нема доступу", show_alert=True)
+        return
+
+    order_id = call.data.split("order_done:", 1)[1]
+
+    try:
+        r = requests.post(
+            "https://monal-mono-pay-production.up.railway.app/admin/mark-done",
+            json={"orderId": order_id},
+            timeout=10
+        )
+        if r.status_code != 200:
+            raise Exception(r.text)
+    except Exception:
+        await call.answer("❌ Помилка при оновленні", show_alert=True)
+        return
+
+    # оновлюємо повідомлення в чаті
+    await call.message.edit_text(
+        call.message.text + "\n\n✅ *Виконано*",
+        parse_mode="Markdown"
+    )
+
+    await call.answer("Готово ✅")
+
+
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
     app = web.Application()
@@ -1035,3 +1065,4 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
