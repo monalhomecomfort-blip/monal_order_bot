@@ -1028,51 +1028,37 @@ async def admin_active_orders(m: types.Message):
 # =================== 👑 АДМІН: ПОМІТИТИ ЯК ВИКОНАНО ===================
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith("order_done:"))
 async def admin_mark_done(call: types.CallbackQuery):
-    # 1) моментально закриваємо “крутилку”, щоб не було “не відповідає”
+    # ✅ одразу закриваємо “крутилку”, щоб не було “не відповідає”
     try:
-        await call.answer("⏳", show_alert=False)
+        await call.answer()
     except Exception:
         pass
 
     if call.from_user.id != ADMIN_ID:
-        try:
-            await call.answer("⛔️ Нема доступу", show_alert=True)
-        except Exception:
-            pass
+        await call.answer("⛔️ Нема доступу", show_alert=True)
         return
 
     order_id = call.data.split("order_done:", 1)[1].strip()
-    if not order_id:
-        try:
-            await call.answer("❌ Нема ID замовлення", show_alert=True)
-        except Exception:
-            pass
-        return
 
-    # 2) викликаємо сервер
+    # ✅ покажемо в чаті, що хендлер ВЗАГАЛІ СПРАЦЮВАВ
+    await call.message.answer(f"🟡 Mark done натиснуто для: {order_id}")
+
     try:
         r = requests.post(
             "https://monal-mono-pay-production.up.railway.app/admin/mark-done",
             json={"orderId": order_id},
             timeout=10
         )
-        if r.status_code != 200:
-            # покажемо частину відповіді, щоб було зрозуміло
-            err = (r.text or "")[:200]
-            await call.message.answer(f"❌ Помилка mark-done: {err}")
-            return
+        await call.message.answer(f"🟢 mark-done статус: {r.status_code}\n{(r.text or '')[:200]}")
     except Exception as e:
-        await call.message.answer(f"❌ Помилка запиту mark-done: {e}")
+        await call.message.answer(f"🔴 mark-done помилка: {e}")
         return
 
-    # 3) пробуємо оновити повідомлення (може впасти через Markdown)
+    # ✅ пробуємо прибрати кнопку (не критично, якщо не вийде)
     try:
-        await call.message.edit_text(call.message.text + "\n\n✅ Виконано")
+        await call.message.edit_reply_markup(reply_markup=None)
     except Exception:
-        # якщо не вдалось редагувати — просто додаткове повідомлення
-        await call.message.answer("✅ Виконано")
-
-
+        pass
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
@@ -1084,5 +1070,6 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
