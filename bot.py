@@ -474,58 +474,52 @@ async def checkout_start(call: types.CallbackQuery):
 )
 async def checkout_name(m: types.Message):
     uid = m.from_user.id
-    user_sessions[uid]["checkout"]["name"] = m.text.strip()
+    checkout = user_sessions[uid]["checkout"]
 
-    # 👉 ОДРАЗУ переходимо до запиту телефону
+    checkout["name"] = m.text.strip()
+    checkout["phone_mode"] = "share"
+
     await m.answer(
-        "📞 Поділіться номером телефону",
-        reply_markup=share_phone_keyboard()
+        "📞 Поділіться номером телефону отримувача 👇",
+        reply_markup=phone_share_keyboard()
     )
 
-# ================== CHECKOUT: ТЕЛЕФОН (ПОДІЛИТИСЬ) ==================
-@dp.message_handler(
-    lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
-    and "name" in user_sessions[m.from_user.id]["checkout"]
-    and "phone" not in user_sessions[m.from_user.id]["checkout"]
-    and "phone_candidate" not in user_sessions[m.from_user.id]["checkout"]
-)
-async def checkout_phone_request(m: types.Message):
-    await m.answer(
-        "📞 Поділіться номером телефону",
-        reply_markup=share_phone_keyboard()
-    )
-    
 # ================== CHECKOUT: ОТРИМАНО НОМЕР ==================
 @dp.message_handler(content_types=types.ContentType.CONTACT)
-async def checkout_phone_received(m: types.Message):
+async def checkout_phone_shared(m: types.Message):
     uid = m.from_user.id
     session = user_sessions.get(uid)
 
     if not session or "checkout" not in session:
         return
 
-    phone = m.contact.phone_number
-    session["checkout"]["phone_candidate"] = phone
+    checkout = session["checkout"]
+
+    if checkout.get("phone_mode") != "share":
+        return
+
+    checkout["phone"] = m.contact.phone_number
+    checkout["phone_mode"] = "confirm"
 
     kb = InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("✅ Так", callback_data="phone_confirm_yes"),
-        InlineKeyboardButton("✏️ Інший", callback_data="phone_confirm_other")
+        InlineKeyboardButton("✅ Так", callback_data="phone_ok"),
+        InlineKeyboardButton("✏️ Інший", callback_data="phone_other")
     )
 
     await m.answer(
-        f"📞 Ми отримали номер:\n<b>{phone}</b>\n\nЦе номер отримувача?",
+        f"📞 Отримано номер:\n<b>{checkout['phone']}</b>\n\nЦе номер отримувача?",
         reply_markup=kb,
         parse_mode="HTML"
     )
 
 # ================== CHECKOUT: НОМЕР ПІДТВЕРДЖЕНО ==================
-@dp.callback_query_handler(lambda c: c.data == "phone_confirm_yes")
-async def phone_confirm_yes(call: types.CallbackQuery):
+@dp.callback_query_handler(lambda c: c.data == "phone_ok")
+async def phone_ok(call: types.CallbackQuery):
     uid = call.from_user.id
     checkout = user_sessions[uid]["checkout"]
 
-    checkout["phone"] = checkout.pop("phone_candidate", "")
+    checkout["phone_mode"] = "done"
 
     await call.message.answer(
         "📦 Вкажіть місто та № відділення / поштомату Нової Пошти:",
@@ -534,15 +528,16 @@ async def phone_confirm_yes(call: types.CallbackQuery):
     await call.answer()
 
 # ================== CHECKOUT: ІНШИЙ НОМЕР ==================
-@dp.callback_query_handler(lambda c: c.data == "phone_confirm_other")
-async def phone_confirm_other(call: types.CallbackQuery):
+@dp.callback_query_handler(lambda c: c.data == "phone_other")
+async def phone_other(call: types.CallbackQuery):
     uid = call.from_user.id
     checkout = user_sessions[uid]["checkout"]
 
-    checkout.pop("phone_candidate", None)
+    checkout["phone_mode"] = "manual"
+    checkout.pop("phone", None)
 
     await call.message.answer(
-        "📞 Введіть інший номер телефону:",
+        "📞 Введіть номер телефону отримувача:",
         parse_mode="Markdown"
     )
     await call.answer()
@@ -550,12 +545,14 @@ async def phone_confirm_other(call: types.CallbackQuery):
 # ================== CHECKOUT: РУЧНИЙ НОМЕР ==================
 @dp.message_handler(
     lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
-    and "phone" not in user_sessions[m.from_user.id]["checkout"]
-    and "phone_candidate" not in user_sessions[m.from_user.id]["checkout"]
+    and user_sessions[m.from_user.id]["checkout"].get("phone_mode") == "manual"
 )
 async def checkout_phone_manual(m: types.Message):
     uid = m.from_user.id
-    user_sessions[uid]["checkout"]["phone"] = m.text.strip()
+    checkout = user_sessions[uid]["checkout"]
+
+    checkout["phone"] = m.text.strip()
+    checkout["phone_mode"] = "done"
 
     await m.answer(
         "📦 Вкажіть місто та № відділення / поштомату Нової Пошти:",
@@ -981,6 +978,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
