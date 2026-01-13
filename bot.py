@@ -960,7 +960,7 @@ async def mono_webhook(request):
         "✅ Оплату отримано!\n\n"
         "Дякуємо за замовлення 💛\n"
         "Щоб оформити нове — оберіть категорію нижче 👇",
-        reply_markup=categories_keyboard()
+        reply_markup=persistent_keyboard()
     )
 
     # прибираємо з черги
@@ -978,6 +978,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
