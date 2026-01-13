@@ -465,11 +465,6 @@ async def checkout_name(m: types.Message):
     uid = m.from_user.id
     user_sessions[uid]["checkout"]["name"] = m.text.strip()
 
-    await m.answer(
-        "📞 Введіть *номер телефону*:",
-        parse_mode="Markdown"
-    )
-
 # ================== CHECKOUT: ТЕЛЕФОН (ПОДІЛИТИСЬ) ==================
 @dp.message_handler(
     lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
@@ -969,6 +964,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
