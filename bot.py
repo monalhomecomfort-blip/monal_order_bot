@@ -206,6 +206,16 @@ def discovery_aromas_keyboard(selected: list):
 
     return kb
 
+def share_phone_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    kb.add(
+        KeyboardButton(
+            text="📱 Поділитись номером телефону",
+            request_contact=True
+        )
+    )
+    return kb
+
 
 # ================== ХЕНДЛЕР/START ==================
 @dp.message_handler(commands=["start"])
@@ -460,18 +470,83 @@ async def checkout_name(m: types.Message):
         parse_mode="Markdown"
     )
 
-# ================== CHECKOUT: ДОСТАВКА ==================
+# ================== CHECKOUT: ТЕЛЕФОН (ПОДІЛИТИСЬ) ==================
 @dp.message_handler(
     lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
     and "name" in user_sessions[m.from_user.id]["checkout"]
     and "phone" not in user_sessions[m.from_user.id]["checkout"]
+    and "phone_candidate" not in user_sessions[m.from_user.id]["checkout"]
 )
-async def checkout_delivery(m: types.Message):
+async def checkout_phone_request(m: types.Message):
+    await m.answer(
+        "📞 Поділіться номером телефону",
+        reply_markup=share_phone_keyboard()
+    )
+    
+# ================== CHECKOUT: ОТРИМАНО НОМЕР ==================
+@dp.message_handler(content_types=types.ContentType.CONTACT)
+async def checkout_phone_received(m: types.Message):
+    uid = m.from_user.id
+    session = user_sessions.get(uid)
+
+    if not session or "checkout" not in session:
+        return
+
+    phone = m.contact.phone_number
+    session["checkout"]["phone_candidate"] = phone
+
+    kb = InlineKeyboardMarkup()
+    kb.add(
+        InlineKeyboardButton("✅ Так", callback_data="phone_confirm_yes"),
+        InlineKeyboardButton("✏️ Інший", callback_data="phone_confirm_other")
+    )
+
+    await m.answer(
+        f"📞 Ми отримали номер:\n<b>{phone}</b>\n\nЦе номер отримувача?",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
+
+# ================== CHECKOUT: НОМЕР ПІДТВЕРДЖЕНО ==================
+@dp.callback_query_handler(lambda c: c.data == "phone_confirm_yes")
+async def phone_confirm_yes(call: types.CallbackQuery):
+    uid = call.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    checkout["phone"] = checkout.pop("phone_candidate", "")
+
+    await call.message.answer(
+        "📦 Вкажіть місто та № відділення / поштомату Нової Пошти:",
+        parse_mode="Markdown"
+    )
+    await call.answer()
+
+# ================== CHECKOUT: ІНШИЙ НОМЕР ==================
+@dp.callback_query_handler(lambda c: c.data == "phone_confirm_other")
+async def phone_confirm_other(call: types.CallbackQuery):
+    uid = call.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    checkout.pop("phone_candidate", None)
+
+    await call.message.answer(
+        "📞 Введіть інший номер телефону:",
+        parse_mode="Markdown"
+    )
+    await call.answer()
+
+# ================== CHECKOUT: РУЧНИЙ НОМЕР ==================
+@dp.message_handler(
+    lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
+    and "phone" not in user_sessions[m.from_user.id]["checkout"]
+    and "phone_candidate" not in user_sessions[m.from_user.id]["checkout"]
+)
+async def checkout_phone_manual(m: types.Message):
     uid = m.from_user.id
     user_sessions[uid]["checkout"]["phone"] = m.text.strip()
 
     await m.answer(
-        "📦 Вкажіть *місто та № відділення / поштомату Нової Пошти*:",
+        "📦 Вкажіть місто та № відділення / поштомату Нової Пошти:",
         parse_mode="Markdown"
     )
 
@@ -894,6 +969,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
