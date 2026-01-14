@@ -684,13 +684,35 @@ async def checkout_payment(m: types.Message):
     uid = m.from_user.id
     user_sessions[uid]["checkout"]["delivery"] = m.text.strip()
 
-    kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
-        InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit")
+    cart = user_sessions[uid].get("cart", {})
+
+    has_certificate = any(
+        item.get("label") == "Сертифікат"
+        for item in cart.values()
     )
 
-    await m.answer("💳 Оберіть спосіб оплати:", reply_markup=kb)
+    kb = InlineKeyboardMarkup(row_width=1)
+
+    if has_certificate:
+        kb.add(
+            InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full")
+        )
+
+        await m.answer(
+            "⚠️ У кошику міститься подарунковий сертифікат.\n"
+            "Для таких замовлень можлива лише повна оплата.",
+            reply_markup=kb
+        )
+    else:
+        kb.add(
+            InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
+            InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit")
+        )
+
+        await m.answer(
+            "💳 Оберіть спосіб оплати:",
+            reply_markup=kb
+        )
 
 # ================== CHECKOUT: РЕЗЮМЕ ==================
 async def show_order_summary(uid, chat_id):
@@ -1201,6 +1223,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
