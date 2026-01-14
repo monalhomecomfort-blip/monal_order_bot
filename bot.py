@@ -314,6 +314,9 @@ async def start_order(message: types.Message):
 async def open_category(call: types.CallbackQuery):
     cat = call.data.split(":")[1]
 
+    uid = call.from_user.id
+    user_sessions.setdefault(uid, {})["current_category"] = cat
+
     # спеціальна логіка для discovery
     if cat == "discovery":
         await call.message.edit_text(
@@ -368,28 +371,37 @@ def find_product(pid):
 @dp.callback_query_handler(lambda c: c.data.startswith("add:"))
 async def add_to_cart(call: types.CallbackQuery):
     uid = call.from_user.id
-    product = find_product(call.data.split(":")[1])
+    product_id = call.data.split(":")[1]
 
+    product = find_product(product_id)
     if not product:
         await call.answer("Товар не знайдено", show_alert=True)
         return
 
     session = user_sessions.setdefault(uid, {"cart": {}})
     cart = session["cart"]
-    cart[product["id"]] = cart.get(product["id"], {"name": product["name"], "price": product["price"], "qty": 0})
-    cart[product["id"]]["qty"] += 1
+
+    cart[product_id] = cart.get(
+        product_id,
+        {
+            "name": product["name"],
+            "price": product["price"],
+            "qty": 0
+        }
+    )
+    cart[product_id]["qty"] += 1
 
     await call.answer("Додано в кошик ✅")
 
-    try:
-        await call.message.edit_reply_markup(
-            reply_markup=products_keyboard(
-                call.data.split(":")[0].replace("add", ""),  # category не міняємо
-                call.from_user.id
+    # ⬇️ КЛЮЧОВЕ: повертаємо ТУ Ж категорію
+    cat = session.get("current_category")
+    if cat:
+        try:
+            await call.message.edit_reply_markup(
+                reply_markup=products_keyboard(cat, uid)
             )
-        )
-    except Exception:
-        pass
+        except Exception:
+            pass
 
 # ================== КОШИК ==================
 @dp.callback_query_handler(lambda c: c.data == "view_cart")
@@ -1204,6 +1216,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
