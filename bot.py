@@ -210,6 +210,28 @@ def products_keyboard(cat_key, user_id):
 
     return kb
 
+def certificates_keyboard(uid):
+    checkout = user_sessions.get(uid, {}).get("checkout", {})
+    cert_type = checkout.get("certificateType", "електронний")
+
+    is_physical = cert_type == "фізичний"
+
+    kb = InlineKeyboardMarkup(row_width=1)
+
+    kb.add(
+        InlineKeyboardButton(
+            ("☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат"),
+            callback_data="toggle_physical_certificate"
+        )
+    )
+
+    kb.add(
+        InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"),
+        InlineKeyboardButton("🛒 Кошик", callback_data="view_cart")
+    )
+
+    return kb
+
 def discovery_start_keyboard():
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("✨ Сформувати сет", callback_data="discovery_start"))
@@ -321,6 +343,19 @@ async def open_category(call: types.CallbackQuery):
             f"Оберіть 4 аромати з {len(DISCOVERY_AROMAS)} "
             f"для вашого discovery set ({DISCOVERY_SAMPLE_ML} мл кожен).",
             reply_markup=discovery_start_keyboard()
+        )
+        await call.answer()
+        return
+
+    # 👇 ОКРЕМО ДЛЯ СЕРТИФІКАТІВ
+    if cat == "certificates":
+        uid = call.from_user.id
+        user_sessions.setdefault(uid, {"cart": {}, "checkout": {}})
+
+        await call.message.edit_text(
+            "🎫 *Подарункові сертифікати:*",
+            parse_mode="Markdown",
+            reply_markup=certificates_keyboard(uid)
         )
         await call.answer()
         return
@@ -504,6 +539,26 @@ async def discovery_confirm(call: types.CallbackQuery):
         "Ви можете сформувати ще один або перейти до оформлення.",
         reply_markup=discovery_start_keyboard()
     )
+    await call.answer()
+
+# ================== СЕРТИФІКАТИ==================
+@dp.callback_query_handler(lambda c: c.data == "toggle_physical_certificate")
+async def toggle_physical_certificate(call: types.CallbackQuery):
+    uid = call.from_user.id
+    session = user_sessions.setdefault(uid, {"cart": {}, "checkout": {}})
+    checkout = session.setdefault("checkout", {})
+
+    current = checkout.get("certificateType", "електронний")
+    checkout["certificateType"] = "фізичний" if current == "електронний" else "електронний"
+
+    # оновлюємо ТЕ Ж повідомлення з новою кнопкою
+    try:
+        await call.message.edit_reply_markup(
+            reply_markup=certificates_keyboard(uid)
+        )
+    except Exception:
+        pass
+
     await call.answer()
 
 # ================== ОФОРМЛЕННЯ: СТАРТ ==================
@@ -1139,6 +1194,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
