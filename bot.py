@@ -182,7 +182,7 @@ def products_keyboard(cat_key):
                 callback_data=f"add:{p['id']}"
             )
         )
-    def products_keyboard(cat_key, user_id):
+def products_keyboard(cat_key, user_id):
     kb = InlineKeyboardMarkup(row_width=1)
 
     for p in PRODUCTS.get(cat_key, []):
@@ -193,7 +193,6 @@ def products_keyboard(cat_key):
             )
         )
 
-    # ⬇️ РАХУЄМО КІЛЬКІСТЬ ТОВАРІВ У КОШИКУ
     cart = user_sessions.get(user_id, {}).get("cart", {})
     total_items = 0
     for item in cart.values():
@@ -1140,6 +1139,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
