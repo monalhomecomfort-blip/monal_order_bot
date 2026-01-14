@@ -203,6 +203,19 @@ def products_keyboard(cat_key, user_id):
 
     cart_text = f"🛒 Кошик ({total_items})" if total_items else "🛒 Кошик"
 
+    # ✅ ТІЛЬКИ ДЛЯ СЕРТИФІКАТІВ: кнопка друку НАД "Назад"
+    if cat_key == "certificates":
+        session = user_sessions.setdefault(user_id, {})
+        certificates = session.setdefault("certificates", {})
+        is_physical = certificates.get("physical", False)
+
+        kb.add(
+            InlineKeyboardButton(
+                "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
+                callback_data="toggle_physical_certificate"
+            )
+        )
+
     kb.add(
         InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"),
         InlineKeyboardButton(cart_text, callback_data="view_cart"),
@@ -332,18 +345,7 @@ async def open_category(call: types.CallbackQuery):
     if cat == "certificates":
         uid = call.from_user.id
 
-        kb = products_keyboard("certificates", uid)
-
-        session = user_sessions.setdefault(uid, {})
-        certificates = session.setdefault("certificates", {})
-        is_physical = certificates.get("physical", False)
-
-        kb.add(
-            InlineKeyboardButton(
-                "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
-                callback_data="toggle_physical_certificate"
-            )
-        )
+        kb = products_keyboard("certificates", uid)        
 
         await call.message.edit_text(
             "🎫 *Подарункові сертифікати:*",
@@ -558,28 +560,11 @@ async def discovery_confirm(call: types.CallbackQuery):
 async def toggle_physical_certificate(call: types.CallbackQuery):
     uid = call.from_user.id
 
-    # беремо сесію користувача
     session = user_sessions.setdefault(uid, {})
-
-    # окремий блок для сертифікатів (НЕ checkout)
     certificates = session.setdefault("certificates", {})
+    certificates["physical"] = not certificates.get("physical", False)
 
-    # перемикаємо стан
-    current = certificates.get("physical", False)
-    certificates["physical"] = not current
-
-    # заново збираємо ТУ Ж клавіатуру сертифікатів
     kb = products_keyboard("certificates", uid)
-
-    is_physical = certificates["physical"]
-    kb.add(
-        InlineKeyboardButton(
-            "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
-            callback_data="toggle_physical_certificate"
-        )
-    )
-
-    # оновлюємо ТІЛЬКИ кнопки, без нового екрану
     await call.message.edit_reply_markup(reply_markup=kb)
     await call.answer()
 
@@ -1216,6 +1201,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
