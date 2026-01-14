@@ -682,37 +682,37 @@ async def checkout_phone_manual(m: types.Message):
 )
 async def checkout_payment(m: types.Message):
     uid = m.from_user.id
-    user_sessions[uid]["checkout"]["delivery"] = m.text.strip()
+    session = user_sessions[uid]
+    cart = session.get("cart", {})
 
-    cart = user_sessions[uid].get("cart", {})
+    session["checkout"]["delivery"] = m.text.strip()
 
+    # 🔎 ПЕРЕВІРКА: чи є сертифікат у кошику
     has_certificate = any(
-        item.get("label") == "Сертифікат"
+        item.get("name", "").lower().startswith("сертифікат")
         for item in cart.values()
     )
 
     kb = InlineKeyboardMarkup(row_width=1)
 
-    if has_certificate:
-        kb.add(
-            InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full")
-        )
+    # ✅ ЗАВЖДИ дозволена повна оплата
+    kb.add(
+        InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full")
+    )
 
-        await m.answer(
-            "⚠️ У кошику міститься подарунковий сертифікат.\n"
-            "Для таких замовлень можлива лише повна оплата.",
-            reply_markup=kb
-        )
-    else:
+    # ❌ Передплата ТІЛЬКИ якщо НЕМає сертифікату
+    if not has_certificate:
         kb.add(
-            InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
             InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit")
         )
-
+    else:
         await m.answer(
-            "💳 Оберіть спосіб оплати:",
-            reply_markup=kb
+            "⚠️ У кошику міститься подарунковий сертифікат.\n"
+            "Для таких замовлень можлива **тільки повна оплата**.",
+            parse_mode="Markdown"
         )
+
+    await m.answer("💳 Оберіть спосіб оплати:", reply_markup=kb)
 
 # ================== CHECKOUT: РЕЗЮМЕ ==================
 async def show_order_summary(uid, chat_id):
@@ -1223,6 +1223,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
