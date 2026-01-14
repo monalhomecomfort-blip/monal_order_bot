@@ -210,28 +210,6 @@ def products_keyboard(cat_key, user_id):
 
     return kb
 
-def certificates_keyboard(uid):
-    checkout = user_sessions.get(uid, {}).get("checkout", {})
-    cert_type = checkout.get("certificateType", "електронний")
-
-    is_physical = cert_type == "фізичний"
-
-    kb = InlineKeyboardMarkup(row_width=1)
-
-    kb.add(
-        InlineKeyboardButton(
-            ("☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат"),
-            callback_data="toggle_physical_certificate"
-        )
-    )
-
-    kb.add(
-        InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"),
-        InlineKeyboardButton("🛒 Кошик", callback_data="view_cart")
-    )
-
-    return kb
-
 def discovery_start_keyboard():
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("✨ Сформувати сет", callback_data="discovery_start"))
@@ -347,18 +325,29 @@ async def open_category(call: types.CallbackQuery):
         await call.answer()
         return
 
-    # 👇 ОКРЕМО ДЛЯ СЕРТИФІКАТІВ
-    if cat == "certificates":
-        uid = call.from_user.id
-        user_sessions.setdefault(uid, {"cart": {}, "checkout": {}})
+if cat == "certificates":
+    uid = call.from_user.id
 
-        await call.message.edit_text(
-            "🎫 *Подарункові сертифікати:*",
-            parse_mode="Markdown",
-            reply_markup=certificates_keyboard(uid)
+    kb = products_keyboard("certificates", uid)
+
+    # ⬇️ ДОДАТКОВА ПРИМІТКА ДЛЯ ВСІХ СЕРТИФІКАТІВ
+    checkout = user_sessions.setdefault(uid, {}).setdefault("checkout", {})
+    is_physical = checkout.get("certificateType") == "фізичний"
+
+    kb.add(
+        InlineKeyboardButton(
+            "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
+            callback_data="toggle_physical_certificate"
         )
-        await call.answer()
-        return
+    )
+
+    await call.message.edit_text(
+        "🎫 *Подарункові сертифікати:*",
+        reply_markup=kb,
+        parse_mode="Markdown"
+    )
+    await call.answer()
+    return
 
     # стандартна логіка для інших категорій
     await call.message.edit_text(
@@ -390,6 +379,16 @@ async def add_to_cart(call: types.CallbackQuery):
     cart[product["id"]]["qty"] += 1
 
     await call.answer("Додано в кошик ✅")
+
+    try:
+        await call.message.edit_reply_markup(
+            reply_markup=products_keyboard(
+                call.data.split(":")[0].replace("add", ""),  # category не міняємо
+                call.from_user.id
+            )
+        )
+    except Exception:
+        pass
 
 # ================== КОШИК ==================
 @dp.callback_query_handler(lambda c: c.data == "view_cart")
@@ -1194,6 +1193,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
