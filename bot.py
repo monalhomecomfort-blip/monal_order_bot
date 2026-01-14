@@ -325,29 +325,29 @@ async def open_category(call: types.CallbackQuery):
         await call.answer()
         return
 
-if cat == "certificates":
-    uid = call.from_user.id
+    # 👇 СЕРТИФІКАТИ = ТОВАРИ + 1 ПРИМІТКА
+    if cat == "certificates":
+        uid = call.from_user.id
 
-    kb = products_keyboard("certificates", uid)
+        kb = products_keyboard("certificates", uid)
 
-    # ⬇️ ДОДАТКОВА ПРИМІТКА ДЛЯ ВСІХ СЕРТИФІКАТІВ
-    checkout = user_sessions.setdefault(uid, {}).setdefault("checkout", {})
-    is_physical = checkout.get("certificateType") == "фізичний"
+        checkout = user_sessions.setdefault(uid, {}).setdefault("checkout", {})
+        is_physical = checkout.get("certificateType") == "фізичний"
 
-    kb.add(
-        InlineKeyboardButton(
-            "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
-            callback_data="toggle_physical_certificate"
+        kb.add(
+            InlineKeyboardButton(
+                "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
+                callback_data="toggle_physical_certificate"
+            )
         )
-    )
 
-    await call.message.edit_text(
-        "🎫 *Подарункові сертифікати:*",
-        reply_markup=kb,
-        parse_mode="Markdown"
-    )
-    await call.answer()
-    return
+        await call.message.edit_text(
+            "🎫 *Подарункові сертифікати:*",
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
+        await call.answer()
+        return
 
     # стандартна логіка для інших категорій
     await call.message.edit_text(
@@ -1193,6 +1193,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
