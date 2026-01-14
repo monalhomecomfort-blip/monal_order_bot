@@ -700,6 +700,10 @@ async def checkout_payment(m: types.Message):
         InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full")
     )
 
+    kb.add(
+        InlineKeyboardButton("🎟 Оплатити сертифікатом", callback_data="pay_certificate")
+    )
+
     # ❌ Передплата ТІЛЬКИ якщо НЕМає сертифікату
     if not has_certificate:
         kb.add(
@@ -713,6 +717,23 @@ async def checkout_payment(m: types.Message):
         )
 
     await m.answer("💳 Оберіть спосіб оплати:", reply_markup=kb)
+
+@dp.message_handler(
+    lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
+    and user_sessions[m.from_user.id]["checkout"].get("payment") == "Сертифікат"
+    and not user_sessions[m.from_user.id]["checkout"].get("certificate_code")
+)
+async def receive_certificate_code(m: types.Message):
+    uid = m.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    checkout["certificate_code"] = m.text.strip()
+
+    await m.answer(
+        "✅ Код сертифікату збережено.\n"
+        "Перевіряємо сертифікат…"
+    )
+
 
 # ================== CHECKOUT: РЕЗЮМЕ ==================
 async def show_order_summary(uid, chat_id):
@@ -867,6 +888,23 @@ async def pay_deposit(call: types.CallbackQuery):
 
     await call.answer()
 
+# ================== ОПЛАТИТИ СЕРТИФІКАТОМ ==================
+@dp.callback_query_handler(lambda c: c.data == "pay_certificate")
+async def pay_certificate(call: types.CallbackQuery):
+    uid = call.from_user.id
+    session = user_sessions.setdefault(uid, {})
+    checkout = session.setdefault("checkout", {})
+
+    checkout["payment"] = "Сертифікат"
+    checkout["certificate_code"] = None
+
+    await call.message.answer(
+        "🎟 Введіть код подарункового сертифікату одним повідомленням:\n"
+        "_Наприклад: MONAL-8QMZ-140490_",
+        parse_mode="Markdown"
+    )
+
+    await call.answer()
 
 
 # ================== CHECKOUT: ПІДТВЕРДЖЕННЯ ==================
@@ -1223,6 +1261,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
