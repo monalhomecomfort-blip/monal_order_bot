@@ -1082,12 +1082,12 @@ async def admin_completed_orders(m: types.Message):
 
     for o in orders:
         text = (
-            f"🧾 Замовлення №{o.get('orderId','—')}\n"
-            f"👤 {o.get('buyerName','—')}\n"
-            f"📞 {o.get('buyerPhone','—')}\n"
-            f"📦 {o.get('delivery','—')}\n\n"
-            f"🛒 {o.get('itemsText','—')}\n\n"
-            f"💰 {o.get('totalAmount','—')} грн\n"
+            f"🧾 Замовлення №{o.get('ID замовлення','—')}\n"
+            f"👤 {o.get('Імʼя клієнта','—')}\n"
+            f"📞 {o.get('Телефон','—')}\n"
+            f"📦 {o.get('Доставка','—')}\n\n"
+            f"🛒 {o.get('Склад замовлення','—')}\n\n"
+            f"💰 {o.get('Сума замовлення','—')} грн\n"
             f"✅ Виконано"
         )
 
@@ -1103,6 +1103,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
