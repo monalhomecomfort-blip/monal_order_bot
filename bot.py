@@ -119,6 +119,14 @@ PRODUCTS = {
 
 user_sessions = {}
 pending_payments = {}
+def cart_count(cart: dict) -> int:
+    count = 0
+    for item in cart.values():
+        if item.get("type") == "discovery":
+            count += 1
+        else:
+            count += item.get("qty", 1)
+    return count
 
 # ================== DISCOVERY SET ==================
 
@@ -144,11 +152,19 @@ def start_keyboard():
     kb.add(InlineKeyboardButton("Почати", callback_data="start_menu"))
     return kb
 
-def categories_keyboard():
+def categories_keyboard(uid=None):
     kb = InlineKeyboardMarkup(row_width=1)
+
     for key, title in CATEGORIES.items():
         kb.add(InlineKeyboardButton(title, callback_data=f"cat:{key}"))
-    kb.add(InlineKeyboardButton("🛒 Переглянути кошик", callback_data="view_cart"))
+
+    cart_items = 0
+    if uid and uid in user_sessions:
+        cart_items = cart_count(user_sessions[uid].get("cart", {}))
+
+    cart_text = f"🛒 Кошик ({cart_items})" if cart_items else "🛒 Кошик"
+
+    kb.add(InlineKeyboardButton(cart_text, callback_data="view_cart"))
     return kb
 
 def persistent_keyboard():
@@ -258,7 +274,7 @@ async def start(message: types.Message):
     # одразу показуємо категорії (щоб було “без зайвого кліку”)
     await message.answer(
         "Оберіть категорію товарів:",
-        reply_markup=categories_keyboard()
+        reply_markup=categories_keyboard(message.from_user.id)
     )
 
 # ================== ХЕНДЛЕР ПОЧАТИ ==================
@@ -268,7 +284,7 @@ async def start_order(message: types.Message):
 
     await message.answer(
         "Оберіть категорію товарів:",
-        reply_markup=categories_keyboard()
+        reply_markup=categories_keyboard(message.from_user.id)
     )
 
 # ================== КАТЕГОРІЇ ==================
@@ -327,7 +343,7 @@ async def view_cart(call: types.CallbackQuery):
         # щоб не ловити MessageNotModified — шлемо новим повідомленням
         await call.message.answer(
             "Ваш кошик порожній 🛒",
-            reply_markup=categories_keyboard()
+            reply_markup=categories_keyboard(call.from_user.id)
         )
         await call.answer()
         return
@@ -389,7 +405,7 @@ async def view_cart(call: types.CallbackQuery):
 async def back_categories(call: types.CallbackQuery):
     await call.message.edit_text(
         "Оберіть категорію:",
-        reply_markup=categories_keyboard()
+        reply_markup=categories_keyboard(call.from_user.id)
     )
     await call.answer()
 
@@ -1103,6 +1119,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
