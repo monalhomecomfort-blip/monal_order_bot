@@ -331,8 +331,9 @@ async def open_category(call: types.CallbackQuery):
 
         kb = products_keyboard("certificates", uid)
 
-        checkout = user_sessions.setdefault(uid, {}).setdefault("checkout", {})
-        is_physical = checkout.get("certificateType") == "фізичний"
+        session = user_sessions.setdefault(uid, {})
+        certificates = session.setdefault("certificates", {})
+        is_physical = certificates.get("physical", False)
 
         kb.add(
             InlineKeyboardButton(
@@ -544,20 +545,30 @@ async def discovery_confirm(call: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == "toggle_physical_certificate")
 async def toggle_physical_certificate(call: types.CallbackQuery):
     uid = call.from_user.id
-    session = user_sessions.setdefault(uid, {"cart": {}, "checkout": {}})
-    checkout = session.setdefault("checkout", {})
 
-    current = checkout.get("certificateType", "електронний")
-    checkout["certificateType"] = "фізичний" if current == "електронний" else "електронний"
+    # беремо сесію користувача
+    session = user_sessions.setdefault(uid, {})
 
-    # оновлюємо ТЕ Ж повідомлення з новою кнопкою
-    try:
-        await call.message.edit_reply_markup(
-            reply_markup=certificates_keyboard(uid)
+    # окремий блок для сертифікатів (НЕ checkout)
+    certificates = session.setdefault("certificates", {})
+
+    # перемикаємо стан
+    current = certificates.get("physical", False)
+    certificates["physical"] = not current
+
+    # заново збираємо ТУ Ж клавіатуру сертифікатів
+    kb = products_keyboard("certificates", uid)
+
+    is_physical = certificates["physical"]
+    kb.add(
+        InlineKeyboardButton(
+            "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
+            callback_data="toggle_physical_certificate"
         )
-    except Exception:
-        pass
+    )
 
+    # оновлюємо ТІЛЬКИ кнопки, без нового екрану
+    await call.message.edit_reply_markup(reply_markup=kb)
     await call.answer()
 
 # ================== ОФОРМЛЕННЯ: СТАРТ ==================
@@ -1193,6 +1204,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
