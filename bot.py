@@ -182,10 +182,33 @@ def products_keyboard(cat_key):
                 callback_data=f"add:{p['id']}"
             )
         )
+    def products_keyboard(cat_key, user_id):
+    kb = InlineKeyboardMarkup(row_width=1)
+
+    for p in PRODUCTS.get(cat_key, []):
+        kb.add(
+            InlineKeyboardButton(
+                f"{p['name']} — {p['price']} грн",
+                callback_data=f"add:{p['id']}"
+            )
+        )
+
+    # ⬇️ РАХУЄМО КІЛЬКІСТЬ ТОВАРІВ У КОШИКУ
+    cart = user_sessions.get(user_id, {}).get("cart", {})
+    total_items = 0
+    for item in cart.values():
+        if "qty" in item:
+            total_items += item["qty"]
+        else:
+            total_items += 1
+
+    cart_text = f"🛒 Кошик ({total_items})" if total_items else "🛒 Кошик"
+
     kb.add(
         InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"),
-        InlineKeyboardButton("🛒 Кошик", callback_data="view_cart"),
+        InlineKeyboardButton(cart_text, callback_data="view_cart"),
     )
+
     return kb
 
 def discovery_start_keyboard():
@@ -306,7 +329,7 @@ async def open_category(call: types.CallbackQuery):
     # стандартна логіка для інших категорій
     await call.message.edit_text(
         f"{CATEGORIES[cat]}:",
-        reply_markup=products_keyboard(cat)
+        reply_markup=products_keyboard(cat, call.from_user.id)
     )
     await call.answer()
 
@@ -421,8 +444,6 @@ async def discovery_start(call: types.CallbackQuery):
         reply_markup=discovery_aromas_keyboard([])
     )
     await call.answer()
-
-
 
 # ================== DISCOVERY: вибір позицій у формуванні сету==================
 @dp.callback_query_handler(lambda c: c.data.startswith("disc_toggle::"))
@@ -1119,6 +1140,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
