@@ -732,40 +732,33 @@ async def receive_certificate_code(m: types.Message):
 
     await m.answer("🔍 Перевіряємо сертифікат…")
 
-    result = check_certificate_on_server(code)
-
-    # ❌ сертифікат не знайдено або помилка
-    if result.get("status") != "ok":
+    # ⬇️ ЗАПИТ НА ТВОЙ СЕРВЕР (index.js)
+    try:
+        r = requests.post(
+            "https://monal-mono-pay-production.up.railway.app/check-certificate",
+            json={"code": code},
+            timeout=10
+        )
+        result = r.json()
+    except Exception:
         checkout.pop("certificate_code", None)
+        await m.answer(
+            "❌ Не вдалося перевірити сертифікат.\n"
+            "Спробуйте ще раз."
+        )
+        return
 
+    # ❌ сертифікат не знайдено або неактивний
+    if not result.get("valid"):
+        checkout.pop("certificate_code", None)
         await m.answer(
             "❌ Сертифікат не знайдено або він недійсний.\n"
             "Перевірте код і введіть ще раз."
         )
         return
 
-    # ❌ сертифікат вже використаний
-    if result.get("used"):
-        checkout.pop("certificate_code", None)
-
-        await m.answer(
-            "❌ Цей сертифікат уже використаний.\n"
-            "Введіть інший код."
-        )
-        return
-
-    # ❌ сертифікат прострочений
-    if result.get("expired"):
-        checkout.pop("certificate_code", None)
-
-        await m.answer(
-            "❌ Термін дії сертифікату минув.\n"
-            "Введіть інший код."
-        )
-    return
-
     # ✅ сертифікат валідний
-    checkout["certificate_amount"] = result.get("amount", 0)
+    checkout["certificate_amount"] = result.get("nominal", 0)
 
     await m.answer(
         f"✅ Сертифікат прийнято.\n"
@@ -1310,6 +1303,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
