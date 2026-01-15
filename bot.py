@@ -775,31 +775,47 @@ async def receive_certificate_code(m: types.Message):
     # 4️⃣ якщо сертифікат покриває все (100%)
     if checkout["due_amount"] <= 0:
 
-        # ⬇️ гарантовано створюємо orderId
+        # 1️⃣ гарантуємо orderId
         if not checkout.get("invoice_ref"):
             checkout["invoice_ref"] = str(uuid.uuid4())
 
-        try:
-            requests.post(
-                "https://monal-mono-pay-production.up.railway.app/send-free-order",
-                json={
-                    "orderId": checkout["invoice_ref"]
-                },
-                timeout=10
-            )
-        except Exception:
-            await m.answer(
-                "❌ Помилка при завершенні замовлення.\n"
-                "Зверніться до адміністратора."
-            )
-            return
+        order_id = checkout["invoice_ref"]
+
+        # 2️⃣ РЕЄСТРУЄМО ЗАМОВЛЕННЯ НА СЕРВЕРІ (ЯК НА САЙТІ)
+        requests.post(
+            "https://monal-mono-pay-production.up.railway.app/register-order",
+            json={
+                "orderId": order_id,
+                "text": "Замовлення з бота (оплата сертифікатом 100%)",
+                "usedCertificates": [checkout["certificate_code"]],
+                "buyerName": checkout.get("name", ""),
+                "buyerPhone": checkout.get("phone", ""),
+                "delivery": checkout.get("delivery", ""),
+                "itemsText": " ".join(
+                    f"{i['name']} × {i.get('qty',1)}"
+                    for i in session["cart"].values()
+                ),
+                "totalAmount": checkout["total_amount"],
+                "paidAmount": checkout["total_amount"],
+                "dueAmount": 0,
+                "paymentLabel": "Оплачено сертифікатом 100%"
+            },
+            timeout=10
+        )
+
+        # 3️⃣ ЗАВЕРШУЄМО ЗАМОВЛЕННЯ (БЕЗ MONO)
+        requests.post(
+            "https://monal-mono-pay-production.up.railway.app/send-free-order",
+            json={"orderId": order_id},
+            timeout=10
+        )
 
         await m.answer(
             "✅ Замовлення повністю оплачено сертифікатом 💛\n"
             "Ми прийняли замовлення і скоро з вами зв’яжемось."
         )
 
-        # очищаємо дані користувача
+        # 4️⃣ ОЧИЩАЄМО СЕСІЮ
         session["cart"] = {}
         session.pop("checkout", None)
         return
@@ -1350,6 +1366,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
