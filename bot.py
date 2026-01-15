@@ -833,21 +833,67 @@ async def receive_certificate_code(m: types.Message):
         session.pop("checkout", None)
         return
 
-    # 5️⃣ якщо потрібна доплата
+    # ⬇️ ЯКЩО ПОТРІБНА ДОПЛАТА — СТВОРЮЄМО MONO-ОПЛАТУ
+    due = checkout["due_amount"]
+
+    # гарантуємо orderId
+    if not checkout.get("invoice_ref"):
+        checkout["invoice_ref"] = str(uuid.uuid4())
+
+    invoice_ref = checkout["invoice_ref"]
+
+    # реєструємо замовлення на сервері (ЯК НА САЙТІ)
+    requests.post(
+        "https://monal-mono-pay-production.up.railway.app/register-order",
+        json={
+            "orderId": invoice_ref,
+            "text": "🔔 *НОВЕ ЗАМОВЛЕННЯ (БОТ)*\n\n"
+                    f"👤 {checkout.get('name','—')}\n"
+                    f"📞 {checkout.get('phone','—')}\n"
+                    f"📦 {checkout.get('delivery','—')}\n\n"
+                    "🛒 Товари:\n" +
+                    "\n".join(
+                        f"- {i['name']} × {i.get('qty',1)}"
+                        for i in session["cart"].values()
+                    ) +
+                    "\n\n💳 Оплата: Сертифікат + mono",
+            "usedCertificates": [checkout["certificate_code"]],
+            "buyerName": checkout.get("name", ""),
+            "buyerPhone": checkout.get("phone", ""),
+            "delivery": checkout.get("delivery", ""),
+            "itemsText": " ".join(
+                f"{i['name']} × {i.get('qty',1)}"
+                for i in session["cart"].values()
+            ),
+            "totalAmount": checkout["total_amount"],
+            "paidAmount": checkout["paid_by_certificate"],
+            "dueAmount": due,
+            "paymentLabel": "Сертифікат + mono"
+        },
+        timeout=10
+    )
+
+    # створюємо mono-інвойс на доплату
+    payment_url = create_mono_invoice(
+        amount=due,
+        description="Доплата після сертифікату — MONAL",
+        invoice_ref=invoice_ref
+    )
+
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton("💳 Оплатити доплату", url=payment_url)
+    )
+
     await m.answer(
         f"💳 Сертифікат прийнято.\n"
         f"Покрито сертифікатом: {checkout['paid_by_certificate']} грн\n"
-        f"До оплати: {checkout['due_amount']} грн\n\n"
-        "Переходимо до оплати 👇"
+        f"До оплати: {due} грн\n\n"
+        "Натисніть кнопку нижче для оплати 👇",
+        reply_markup=kb
     )
 
-    # 🔽 автоматично запускаємо оплату mono
-    await pay_full(types.CallbackQuery(
-        id="cert_partial",
-        from_user=m.from_user,
-        chat_instance="cert",
-        message=m
-    ))
+    return
 
 def check_certificate_on_server(code: str):
     try:
@@ -1387,6 +1433,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
