@@ -989,6 +989,41 @@ async def pay_full(call: types.CallbackQuery):
         "payment_type": "100% оплата"
     }
 
+    # ================== REGISTER ORDER (BOT → SERVER) ==================
+order_text = "🛒 Замовлення з бота\n\n"
+
+items_text_list = []
+for item in session["cart"].values():
+    if item.get("type") == "discovery":
+        items_text_list.append(
+            item["name"] + ":\n" + "\n".join(item["aromas"])
+        )
+    else:
+        qty = item.get("qty", 1)
+        items_text_list.append(f'{item["name"]} × {qty}')
+
+items_text = "\n".join(items_text_list)
+
+requests.post(
+    "https://monal-mono-pay-production.up.railway.app/register-order",
+    json={
+        "orderId": invoice_ref,
+        "text": order_text,
+        "certificates": [],
+        "usedCertificates": [],
+        "certificateType": session.get("checkout", {}).get("certificateType", "електронний"),
+        "buyerName": session["checkout"].get("name", ""),
+        "buyerPhone": session["checkout"].get("phone", ""),
+        "delivery": session["checkout"].get("delivery", ""),
+        "itemsText": items_text,
+        "totalAmount": total,
+        "paidAmount": total,
+        "dueAmount": 0,
+        "paymentLabel": "100% оплата (bot)"
+    },
+    timeout=10
+)
+
     payment_url = create_mono_invoice(
         amount=total,
         description="Оплата замовлення MONAL",
@@ -1439,6 +1474,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
