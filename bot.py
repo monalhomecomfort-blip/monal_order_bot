@@ -727,13 +727,62 @@ async def receive_certificate_code(m: types.Message):
     uid = m.from_user.id
     checkout = user_sessions[uid]["checkout"]
 
-    checkout["certificate_code"] = m.text.strip()
+    code = m.text.strip()
+    checkout["certificate_code"] = code
+
+    await m.answer("🔍 Перевіряємо сертифікат…")
+
+    result = check_certificate_on_server(code)
+
+    # ❌ сертифікат не знайдено або помилка
+    if result.get("status") != "ok":
+        checkout.pop("certificate_code", None)
+
+        await m.answer(
+            "❌ Сертифікат не знайдено або він недійсний.\n"
+            "Перевірте код і введіть ще раз."
+        )
+        return
+
+    # ❌ сертифікат вже використаний
+    if result.get("used"):
+        checkout.pop("certificate_code", None)
+
+        await m.answer(
+            "❌ Цей сертифікат уже використаний.\n"
+            "Введіть інший код."
+        )
+        return
+
+    # ❌ сертифікат прострочений
+    if result.get("expired"):
+        checkout.pop("certificate_code", None)
+
+        await m.answer(
+            "❌ Термін дії сертифікату минув.\n"
+            "Введіть інший код."
+        )
+    return
+
+    # ✅ сертифікат валідний
+    checkout["certificate_amount"] = result.get("amount", 0)
 
     await m.answer(
-        "✅ Код сертифікату збережено.\n"
-        "Перевіряємо сертифікат…"
+        f"✅ Сертифікат прийнято.\n"
+        f"Номінал: {checkout['certificate_amount']} грн"
     )
 
+def check_certificate_on_server(code: str):
+    try:
+        r = requests.post(
+            "https://monal-mono-pay-production.up.railway.app/check-certificate",
+            json={"code": code},
+            timeout=10
+        )
+        return r.json()
+    except Exception as e:
+        print("❌ Certificate check error:", e)
+        return {"status": "error"}
 
 # ================== CHECKOUT: РЕЗЮМЕ ==================
 async def show_order_summary(uid, chat_id):
@@ -1261,6 +1310,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
