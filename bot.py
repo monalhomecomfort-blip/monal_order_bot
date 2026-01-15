@@ -1024,11 +1024,11 @@ requests.post(
     timeout=10
 )
 
-    payment_url = create_mono_invoice(
-        amount=total,
-        description="Оплата замовлення MONAL",
-        invoice_ref=invoice_ref
-    )
+payment_url = create_mono_invoice(
+    amount=total,
+    description="Оплата замовлення MONAL",
+    invoice_ref=invoice_ref
+)
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -1474,6 +1474,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
