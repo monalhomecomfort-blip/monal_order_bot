@@ -10,6 +10,7 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton
 )
+from aiogram.types import ReplyKeyboardRemove
 
 from aiogram.types import MenuButtonWebApp, WebAppInfo
 
@@ -786,7 +787,19 @@ async def receive_certificate_code(m: types.Message):
             "https://monal-mono-pay-production.up.railway.app/register-order",
             json={
                 "orderId": order_id,
-                "text": "Замовлення з бота (оплата сертифікатом 100%)",
+                "text": (
+                    "🔔 *НОВЕ ЗАМОВЛЕННЯ (БОТ)*\n\n"
+                    f"👤 {checkout.get('name','—')}\n"
+                    f"📞 {checkout.get('phone','—')}\n"
+                    f"📦 {checkout.get('delivery','—')}\n\n"
+                    "🛒 Товари:\n" +
+                    "\n".join(
+                        f"- {i['name']} × {i.get('qty',1)}"
+                        for i in session["cart"].values()
+                    ) +
+                    f"\n\n💳 Оплата: Сертифікат (100%)"
+                ),
+
                 "usedCertificates": [checkout["certificate_code"]],
                 "buyerName": checkout.get("name", ""),
                 "buyerPhone": checkout.get("phone", ""),
@@ -812,7 +825,8 @@ async def receive_certificate_code(m: types.Message):
 
         await m.answer(
             "✅ Замовлення повністю оплачено сертифікатом 💛\n"
-            "Ми прийняли замовлення і скоро з вами зв’яжемось."
+            "Щоб оформити нове — натисніть «Почати замовлення» 👇",
+            reply_markup=ReplyKeyboardRemove()
         )
 
         # 4️⃣ ОЧИЩАЄМО СЕСІЮ
@@ -825,8 +839,16 @@ async def receive_certificate_code(m: types.Message):
         f"💳 Сертифікат прийнято.\n"
         f"Покрито сертифікатом: {checkout['paid_by_certificate']} грн\n"
         f"До оплати: {checkout['due_amount']} грн\n\n"
-        "Продовжуємо оформлення оплати 👇"
+        "Переходимо до оплати 👇"
     )
+
+    # 🔽 автоматично запускаємо оплату mono
+    await pay_full(types.CallbackQuery(
+        id="cert_partial",
+        from_user=m.from_user,
+        chat_instance="cert",
+        message=m
+    ))
 
 def check_certificate_on_server(code: str):
     try:
@@ -1366,6 +1388,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
