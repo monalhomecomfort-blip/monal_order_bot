@@ -874,11 +874,17 @@ async def receive_certificate_code(m: types.Message):
     )
 
     # створюємо mono-інвойс на доплату
-    payment_url = create_mono_invoice(
-        amount=due,
-        description="Доплата після сертифікату — MONAL",
-        invoice_ref=invoice_ref
+    r = requests.post(
+        "https://monal-mono-pay-production.up.railway.app/create-payment",
+        json={
+            "orderId": invoice_ref,
+            "amount": due
+        },
+        timeout=10
     )
+
+    payment_url = r.json().get("pageUrl")
+
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -1433,6 +1439,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
