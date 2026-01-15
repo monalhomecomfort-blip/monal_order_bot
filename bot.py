@@ -674,7 +674,7 @@ async def checkout_phone_manual(m: types.Message):
         parse_mode="Markdown"
     )
 
-# ================== CHECKOUT: ОПЛАТА ==================
+# ================== CHECKOUT: ОПЛАТА СЕРТИФІКАТОМ ==================
 @dp.message_handler(
     lambda m: "checkout" in user_sessions.get(m.from_user.id, {})
     and "phone" in user_sessions[m.from_user.id]["checkout"]
@@ -725,14 +725,15 @@ async def checkout_payment(m: types.Message):
 )
 async def receive_certificate_code(m: types.Message):
     uid = m.from_user.id
-    checkout = user_sessions[uid]["checkout"]
+    session = user_sessions[uid]
+    checkout = session["checkout"]
 
     code = m.text.strip()
     checkout["certificate_code"] = code
 
     await m.answer("🔍 Перевіряємо сертифікат…")
 
-    # ⬇️ ЗАПИТ НА ТВОЙ СЕРВЕР (index.js)
+    # 1️⃣ перевірка сертифікату через index.js
     try:
         r = requests.post(
             "https://monal-mono-pay-production.up.railway.app/check-certificate",
@@ -748,7 +749,6 @@ async def receive_certificate_code(m: types.Message):
         )
         return
 
-    # ❌ сертифікат не знайдено або неактивний
     if not result.get("valid"):
         checkout.pop("certificate_code", None)
         await m.answer(
@@ -757,12 +757,59 @@ async def receive_certificate_code(m: types.Message):
         )
         return
 
-    # ✅ сертифікат валідний
+    # 2️⃣ сертифікат валідний — зберігаємо номінал
     checkout["certificate_amount"] = result.get("nominal", 0)
 
+    # 3️⃣ рахуємо суму замовлення
+    total = 0
+    for item in session["cart"].values():
+        if item.get("type") == "discovery":
+            total += item["price"]
+        else:
+            total += item["price"] * item.get("qty", 1)
+
+    checkout["total_amount"] = total
+    checkout["paid_by_certificate"] = min(total, checkout["certificate_amount"])
+    checkout["due_amount"] = total - checkout["paid_by_certificate"]
+
+    # 4️⃣ якщо сертифікат покриває все (100%)
+    if checkout["due_amount"] <= 0:
+
+        # ⬇️ гарантовано створюємо orderId
+        if not checkout.get("invoice_ref"):
+            checkout["invoice_ref"] = str(uuid.uuid4())
+
+        try:
+            requests.post(
+                "https://monal-mono-pay-production.up.railway.app/send-free-order",
+                json={
+                    "orderId": checkout["invoice_ref"]
+                },
+                timeout=10
+            )
+        except Exception:
+            await m.answer(
+                "❌ Помилка при завершенні замовлення.\n"
+                "Зверніться до адміністратора."
+            )
+            return
+
+        await m.answer(
+            "✅ Замовлення повністю оплачено сертифікатом 💛\n"
+            "Ми прийняли замовлення і скоро з вами зв’яжемось."
+        )
+
+        # очищаємо дані користувача
+        session["cart"] = {}
+        session.pop("checkout", None)
+        return
+
+    # 5️⃣ якщо потрібна доплата
     await m.answer(
-        f"✅ Сертифікат прийнято.\n"
-        f"Номінал: {checkout['certificate_amount']} грн"
+        f"💳 Сертифікат прийнято.\n"
+        f"Покрито сертифікатом: {checkout['paid_by_certificate']} грн\n"
+        f"До оплати: {checkout['due_amount']} грн\n\n"
+        "Продовжуємо оформлення оплати 👇"
     )
 
 def check_certificate_on_server(code: str):
@@ -1303,6 +1350,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
