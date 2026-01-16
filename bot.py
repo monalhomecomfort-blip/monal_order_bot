@@ -118,7 +118,6 @@ PRODUCTS = {
 }
 
 user_sessions = {}
-pending_payments = {}
 def cart_count(cart: dict) -> int:
     count = 0
     for item in cart.values():
@@ -981,14 +980,7 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["paid_amount"] = total
     session["checkout"]["due_amount"] = 0
 
-    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
-    pending_payments[invoice_ref] = {
-        "user_id": uid,
-        "cart": session["cart"],
-        "checkout": session["checkout"],
-        "payment_type": "100% оплата"
-    }
-
+    
     # ================== REGISTER ORDER (BOT → SERVER) ==================
     order_text = "🛒 Замовлення з бота\n\n"
 
@@ -1024,11 +1016,16 @@ async def pay_full(call: types.CallbackQuery):
         timeout=10
     )
 
-    payment_url = create_mono_invoice(
-        amount=total,
-        description="Оплата замовлення MONAL",
-        invoice_ref=invoice_ref
+    r = requests.post(
+        "https://monal-mono-pay-production.up.railway.app/create-payment",
+        json={
+            "orderId": invoice_ref,
+            "amount": deposit
+        },
+        timeout=10
     )
+
+    payment_url = r.json().get("pageUrl")
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -1070,21 +1067,18 @@ async def pay_deposit(call: types.CallbackQuery):
     # ⬇️ КЛЮЧОВЕ: суми
     session["checkout"]["total_amount"] = total
     session["checkout"]["paid_amount"] = deposit
-    session["checkout"]["due_amount"] = total - deposit
+    session["checkout"]["due_amount"] = total - deposit    
 
-    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
-    pending_payments[invoice_ref] = {
-        "user_id": uid,
-        "cart": session["cart"],
-        "checkout": session["checkout"],
-        "payment_type": "Передплата 150 грн"
-    }
-
-    payment_url = create_mono_invoice(
-        amount=deposit,
-        description="Передплата 150 грн — MONAL",
-        invoice_ref=invoice_ref
+    r = requests.post(
+        "https://monal-mono-pay-production.up.railway.app/create-payment",
+        json={
+            "orderId": invoice_ref,
+            "amount": total
+        },
+        timeout=10
     )
+
+    payment_url = r.json().get("pageUrl")
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -1214,148 +1208,6 @@ async def noop(call: types.CallbackQuery):
     await call.answer()
 
 
-# ================== ОПЛАТА МОНО ==================
-def create_mono_invoice(amount: int, description: str, invoice_ref: str):
-    url = "https://api.monobank.ua/api/merchant/invoice/create"
-
-    headers = {
-        "X-Token": MONO_TOKEN,
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "amount": int(amount * 100),
-        "ccy": 980,
-        "merchantPaymInfo": {
-            "reference": invoice_ref,
-            "destination": description
-        },
-        "redirectUrl": "https://monal.com.ua/payment-success.html",
-        "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-
-    data = response.json()
-    return data["pageUrl"]
-
-# ================== MONO WEBHOOK ==================
-async def mono_webhook(request):
-    data = await request.json()
-    print("💰 MONO WEBHOOK DATA:", data)
-
-    reference = data.get("reference")
-    status = data.get("status")
-
-    if not reference:
-        print("❌ No reference in payload")
-        return web.Response(text="no reference", status=400)
-
-    if reference not in pending_payments:
-        print("❌ Reference not found in pending_payments:", reference)
-        return web.Response(text="unknown reference", status=200)
-
-    # беремо збережене замовлення
-    order = pending_payments[reference]
-    user_id = order["user_id"]
-    cart = order["cart"]
-    checkout = order["checkout"]
-    total_amount = checkout.get("total_amount", 0)
-    paid_amount = checkout.get("paid_amount", 0)
-    due_amount = checkout.get("due_amount", 0)
-    payment_type = order["payment_type"]
-
-    # --------- ТІЛЬКИ ТОВАРИ ДЛЯ ТАБЛИЦІ ---------
-    items_text_list = []
-
-    for item in cart.values():
-        if item.get("type") == "discovery":
-            items_text_list.append(
-                item["name"] + ":\n" + "\n".join(item["aromas"])
-            )
-        else:
-            qty = item.get("qty", 1)
-            items_text_list.append(f'{item["name"]} × {qty}')
-
-    items_text = "\n".join(items_text_list)
-
-
-    # цікавить ТІЛЬКИ успішна оплата
-    if status != "success":
-        return web.Response(text="ok", status=200)
-
-    # --------- формуємо повідомлення адміну ---------
-    text = "✅ *ОПЛАТУ ОТРИМАНО*\n\n"
-
-    text += f"👤 *{checkout.get('name','—')}*\n"
-    text += f"📞 {checkout.get('phone','—')}\n"
-    text += f"📦 {checkout.get('delivery','—')}\n"
-    text += f"💳 {payment_type}\n\n"
-
-    total = 0
-    text += "🛒 *Товари:*\n"
-
-    for item in cart.values():
-        if item.get("type") == "discovery":
-            text += (
-                f"🎁 {item['name']} — {item['price']} грн\n" +
-                "\n".join([f"  • {a}" for a in item["aromas"]]) +
-                "\n\n"
-            )
-            total += item["price"]
-        else:
-            qty = item.get("qty", 1)
-            text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
-            total += item["price"] * qty
-    
-    text += (
-        f"\n💰 *Сума замовлення:* {total_amount} грн"
-        f"\n💳 *Сплачено:* {paid_amount} грн"
-        f"\n📦 *До оплати:* {due_amount} грн"
-    )
-    text += f"\n🧾 ref: `{reference}`"
-
-    await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
-
-        # 🧾 ЛОГУЄМО ЗАМОВЛЕННЯ В ORDERS_LOG (через сервер)
-    try:
-        requests.post(
-            "https://monal-mono-pay-production.up.railway.app/log-bot-order",
-            json={
-                "orderId": reference,
-                "totalAmount": total_amount,
-                "paidAmount": paid_amount,
-                "dueAmount": due_amount,
-                "paymentType": payment_type,
-                "buyerName": checkout.get("name", ""),
-                "buyerPhone": checkout.get("phone", ""),
-                "delivery": checkout.get("delivery", ""),
-                "itemsText": items_text
-            },
-            timeout=5
-        )
-    except Exception as e:
-        print("❌ BOT → ORDERS_LOG ERROR:", e)
-
-    # 🔽 ОЧИЩАЄМО КОШИК І CHECKOUT ПІСЛЯ УСПІШНОЇ ОПЛАТИ
-    user_sessions[user_id]["cart"] = {}
-    user_sessions[user_id].pop("checkout", None)
-
-    # ✅ ПОВІДОМЛЕННЯ ПОКУПЦЮ: ОПЛАТУ ОТРИМАНО + СТАРТ ЗАНОВО
-    await bot.send_message(
-        user_id,
-        "✅ Оплату отримано!\n\n"
-        "Дякуємо за замовлення 💛\n"
-        "Щоб оформити нове — оберіть категорію нижче 👇",
-        reply_markup=persistent_keyboard()
-    )
-
-    # прибираємо з черги
-    pending_payments.pop(reference, None)
-
-    return web.Response(text="ok", status=200)
-
 # =================== 👑 АДМІН: АКТИВНІ ЗАМОВЛЕННЯ ===========================
 @dp.message_handler(lambda m: m.text == "📦 Активні замовлення")
 async def admin_active_orders(m: types.Message):
@@ -1469,11 +1321,11 @@ if __name__ == "__main__":
     app = web.Application()
 
     app.router.add_post("/webhook/telegram", telegram_webhook)
-    app.router.add_post("/webhook/mono", mono_webhook)
-
+   
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
