@@ -1230,7 +1230,7 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
             "reference": invoice_ref,
             "destination": description
         },
-        "redirectUrl": "https://monal.com.ua/",
+        "redirectUrl": "https://monal.com.ua/payment-success.html",
         "webHookUrl": "https://web-production-9a49a.up.railway.app/webhook/mono"
     }
 
@@ -1474,6 +1474,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
