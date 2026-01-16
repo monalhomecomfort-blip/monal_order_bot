@@ -1030,7 +1030,10 @@ async def pay_full(call: types.CallbackQuery):
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
-        InlineKeyboardButton("💳 Оплатити через monobank", url=payment_url),
+        InlineKeyboardButton(
+            "💳 Оплатити через monobank",
+            web_app=WebAppInfo(url=payment_url)
+        ),
         InlineKeyboardButton("⬅️ Назад", callback_data="view_cart")
     )
 
@@ -1083,7 +1086,10 @@ async def pay_deposit(call: types.CallbackQuery):
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
-        InlineKeyboardButton("💳 Оплатити передплату", url=payment_url),
+        InlineKeyboardButton(
+            "💳 Оплатити передплату",
+            web_app=WebAppInfo(url=payment_url)
+        ),
         InlineKeyboardButton("⬅️ Назад", callback_data="view_cart")
     )
 
@@ -1326,6 +1332,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
