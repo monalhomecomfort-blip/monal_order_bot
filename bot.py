@@ -1012,7 +1012,7 @@ async def pay_full(call: types.CallbackQuery):
             "totalAmount": total,
             "paidAmount": total,
             "dueAmount": 0,
-            "paymentLabel": "100% оплата (bot)"
+            "paymentLabel": "100% оплата (bot)",
 
             "userChatId": call.from_user.id
         },
@@ -1350,6 +1350,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
