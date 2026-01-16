@@ -8,7 +8,8 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
-    ReplyKeyboardMarkup, KeyboardButton
+    ReplyKeyboardMarkup, KeyboardButton,
+    ReplyKeyboardRemove
 )
 
 from aiogram.types import MenuButtonWebApp, WebAppInfo
@@ -1325,6 +1326,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
