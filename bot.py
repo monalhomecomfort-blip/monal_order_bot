@@ -1325,21 +1325,6 @@ async def admin_completed_orders(m: types.Message):
 
         await m.answer(text)
 
-# ================== PAYMENT SUCCESS CLEANUP ==================
-@dp.message_handler(lambda m: m.text.startswith("✅ Оплату отримано"))
-async def payment_success_cleanup(m: types.Message):
-    uid = m.from_user.id
-
-    # 🔽 очищаємо кошик
-    if uid in user_sessions:
-        user_sessions[uid]["cart"] = {}
-        user_sessions[uid].pop("checkout", None)
-
-    # (не обовʼязково, але красиво)
-    await m.answer(
-        "🛒 Кошик очищено.\n\nОберіть категорію для нового замовлення 👇",
-        reply_markup=persistent_keyboard()
-    )
 
 # ================== ЗАПУСК ==================
 if __name__ == "__main__":
@@ -1350,6 +1335,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
