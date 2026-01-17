@@ -888,8 +888,10 @@ async def receive_certificate_code(m: types.Message):
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
-        InlineKeyboardButton("💳 Оплатити доплату", url=payment_url)
-    )
+        InlineKeyboardButton(
+            "💳 Оплатити доплату",
+            web_app=WebAppInfo(url=payment_url)
+        )
 
     await m.answer(
         f"💳 Сертифікат прийнято.\n"
@@ -1370,6 +1372,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
