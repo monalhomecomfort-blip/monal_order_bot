@@ -36,6 +36,51 @@ async def telegram_webhook(request: web.Request):
     await dp.process_update(update)
     return web.Response(text="ok")
 
+# ================== MONO WEBHOOK ==================
+async def mono_webhook(request: web.Request):
+    data = await request.json()
+    print("💰 MONO WEBHOOK DATA:", data)
+
+    status = data.get("status")
+    reference = data.get("reference")
+
+    # mono може присилати іншу структуру
+    if not reference:
+        reference = data.get("merchantPaymInfo", {}).get("reference")
+
+    if not reference:
+        print("❌ No reference in webhook")
+        return web.Response(text="no reference", status=200)
+
+    # ❗ цікавить ТІЛЬКИ успішна оплата
+    if status != "success":
+        print(f"⏳ Payment status: {status}")
+        return web.Response(text="ignored", status=200)
+
+    # ---------- ЛОГ НА СЕРВЕР (ЯК БУЛО) ----------
+    try:
+        requests.post(
+            "https://monal-mono-pay-production.up.railway.app/payment-success",
+            json={
+                "orderId": reference
+            },
+            timeout=5
+        )
+    except Exception as e:
+        print("❌ payment-success error:", e)
+
+    # ---------- ПОВІДОМЛЕННЯ АДМІНУ ----------
+    try:
+        await bot.send_message(
+            ADMIN_ID,
+            f"✅ *Оплату отримано*\n\n🧾 Order ID: `{reference}`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        print("❌ Admin notify error:", e)
+
+    return web.Response(text="ok", status=200)
+
 # ================== STARTUP ==================
 async def on_startup(app):
     # 1️⃣ Telegram webhook
@@ -811,7 +856,8 @@ async def receive_certificate_code(m: types.Message):
                 "totalAmount": checkout["total_amount"],
                 "paidAmount": checkout["total_amount"],
                 "dueAmount": 0,
-                "paymentLabel": "Оплачено сертифікатом 100%"
+                "paymentLabel": "Оплачено сертифікатом 100%",
+                "userChatId": m.from_user.id
             },
             timeout=10
         )
@@ -869,7 +915,8 @@ async def receive_certificate_code(m: types.Message):
             "totalAmount": checkout["total_amount"],
             "paidAmount": checkout["paid_by_certificate"],
             "dueAmount": due,
-            "paymentLabel": "Сертифікат + mono"
+            "paymentLabel": "Сертифікат + mono",
+            "userChatId": m.from_user.id
         },
         timeout=10
     )
@@ -1378,53 +1425,10 @@ if __name__ == "__main__":
     app = web.Application()
 
     app.router.add_post("/webhook/telegram", telegram_webhook)
+    app.router.add_post("/webhook/mono", mono_webhook)
    
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
