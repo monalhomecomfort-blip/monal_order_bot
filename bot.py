@@ -999,12 +999,21 @@ async def pay_full(call: types.CallbackQuery):
 
     items_text = "\n".join(items_text_list)
 
+        # 🎟 формуємо сертифікати для сервера (якщо вони є в кошику)
+    certificates = []
+
+    for item in session["cart"].values():
+        if item.get("label") == "Сертифікат":
+            certificates.append({
+                "nominal": item["price"]
+            })
+
     requests.post(
         "https://monal-mono-pay-production.up.railway.app/register-order",
         json={
             "orderId": invoice_ref,
             "text": order_text,
-            "certificates": [],
+            "certificates": certificates,
             "usedCertificates": [],
             "certificateType": session.get("checkout", {}).get("certificateType", "електронний"),
             "buyerName": session["checkout"].get("name", ""),
@@ -1372,6 +1381,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
