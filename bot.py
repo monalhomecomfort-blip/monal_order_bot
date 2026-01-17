@@ -356,21 +356,8 @@ async def open_category(call: types.CallbackQuery):
     # 👇 СЕРТИФІКАТИ = ТОВАРИ + 1 ПРИМІТКА
     if cat == "certificates":
         uid = call.from_user.id
-        kb = products_keyboard("certificates", uid)
+        kb = products_keyboard("certificates", uid)        
         
-        session = user_sessions.setdefault(uid, {})
-        certificates = session.setdefault("certificates", {})
-        is_physical = certificates.get("physical", False)
-
-        kb.add(
-            InlineKeyboardButton(
-                "☑️ Друкований сертифікат"
-                if is_physical
-                else "☐ Хочу друкований сертифікат",
-                callback_data="toggle_physical_certificate"
-            )
-        )
-
         await call.message.edit_text(
             "🎫 *Подарункові сертифікати:*",
             reply_markup=kb,
@@ -1335,3 +1322,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
