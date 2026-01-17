@@ -103,7 +103,7 @@ PRODUCTS = {
         {"id": "r10", "name": "GREEN HAVEN 275мл", "price": 1300},        
     ],
     "certificates": [
-        {"id": "c1000", "name": "Сертифікат 1000 грн", "price": 1,
+        {"id": "c1000", "name": "Сертифікат 1 грн", "price": 1,
             "label": "Сертифікат"},
         {"id": "c2500", "name": "Сертифікат 2500 грн", "price": 2500,
             "label": "Сертифікат"},
@@ -1370,6 +1370,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
