@@ -1023,7 +1023,7 @@ async def pay_full(call: types.CallbackQuery):
         "https://monal-mono-pay-production.up.railway.app/create-payment",
         json={
             "orderId": invoice_ref,
-            "amount": deposit
+            "amount": total
         },
         timeout=10
     )
@@ -1073,7 +1073,42 @@ async def pay_deposit(call: types.CallbackQuery):
     # ⬇️ КЛЮЧОВЕ: суми
     session["checkout"]["total_amount"] = total
     session["checkout"]["paid_amount"] = deposit
-    session["checkout"]["due_amount"] = total - deposit    
+    session["checkout"]["due_amount"] = total - deposit
+
+    # ================== REGISTER ORDER (BOT → SERVER) ==================
+    items_text_list = []
+    for item in session["cart"].values():
+        if item.get("type") == "discovery":
+            items_text_list.append(
+                item["name"] + ":\n" + "\n".join(item["aromas"])
+            )
+        else:
+            qty = item.get("qty", 1)
+            items_text_list.append(f'{item["name"]} × {qty}')
+
+    items_text = "\n".join(items_text_list)
+
+    requests.post(
+        "https://monal-mono-pay-production.up.railway.app/register-order",
+        json={
+            "orderId": invoice_ref,
+            "text": "🛒 Замовлення з бота\n\n",
+            "certificates": [],
+            "usedCertificates": [],
+            "buyerName": session["checkout"].get("name", ""),
+            "buyerPhone": session["checkout"].get("phone", ""),
+            "delivery": session["checkout"].get("delivery", ""),
+            "itemsText": items_text,
+            "totalAmount": total,
+            "paidAmount": deposit,
+            "dueAmount": total - deposit,
+            "paymentLabel": "Передплата 150 грн",
+
+            # 🔑 КЛЮЧОВЕ
+            "userChatId": call.from_user.id
+        },
+        timeout=10
+    )
 
     r = requests.post(
         "https://monal-mono-pay-production.up.railway.app/create-payment",
@@ -1335,6 +1370,7 @@ if __name__ == "__main__":
     app.on_startup.append(on_startup)
 
     web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+
 
 
 
