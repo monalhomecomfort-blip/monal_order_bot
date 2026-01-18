@@ -336,6 +336,35 @@ def check_certificate_remote(code: str):
         print("❌ check_certificate_remote error:", e)
         return False, None
 
+def calculate_amounts_with_certificate(total: int, certificate_nominal: int):
+    """
+    Повертає (paid_by_certificate, mono_amount)
+    """
+    if certificate_nominal >= total:
+        return total, 0
+    return certificate_nominal, total - certificate_nominal
+
+def send_free_order_to_server(order_id: str, used_certificates=None):
+    """
+    Викликає Railway /send-free-order для 100% оплати сертифікатом
+    """
+    payload = {"orderId": order_id}
+
+    # (передамо коди сертифікатів у КРОЦІ 8; зараз залишимо підтримку поля)
+    if used_certificates:
+        payload["usedCertificates"] = used_certificates
+
+    try:
+        r = requests.post(
+            f"{PAY_SERVER_URL}/send-free-order",
+            json=payload,
+            timeout=8,
+        )
+        return r.ok
+    except Exception as e:
+        print("❌ send_free_order_to_server error:", e)
+        return False
+
 # ================== ХЕНДЛЕР/START ==================
 
 @dp.message_handler(commands=["start"])
@@ -957,6 +986,18 @@ async def pay_full(call: types.CallbackQuery):
         else:
             total += item["price"] * item.get("qty", 1)
 
+    # ===== КРОК 6: розрахунок з сертифікатом =====
+    checkout = session.get("checkout", {})
+    certificate_nominal = checkout.get("certificate_nominal")
+
+    if certificate_nominal:
+        paid_by_cert, mono_amount = calculate_amounts_with_certificate(
+            total,
+            certificate_nominal
+        )
+    else:
+        paid_by_cert, mono_amount = 0, total
+
     invoice_ref = str(uuid.uuid4())
 
     session.setdefault("checkout", {})
@@ -964,10 +1005,10 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
-    # ⬇️ КЛЮЧОВЕ: суми
+    # ⬇️ КЛЮЧОВЕ: суми (з урахуванням сертифіката)
     session["checkout"]["total_amount"] = total
-    session["checkout"]["paid_amount"] = total
-    session["checkout"]["due_amount"] = 0
+    session["checkout"]["paid_amount"] = paid_by_cert
+    session["checkout"]["due_amount"] = mono_amount
 
     # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
     pending_payments[invoice_ref] = {
@@ -977,8 +1018,39 @@ async def pay_full(call: types.CallbackQuery):
         "payment_type": "100% оплата",
     }
 
+    # ✅ КРОК 7: якщо mono_amount == 0 → 100% сертифікат, mono не викликаємо
+    if mono_amount == 0:
+        ok = send_free_order_to_server(
+            order_id=invoice_ref,
+            used_certificates=[]  # коди передамо в КРОЦІ 8
+        )
+
+        if ok:
+            # як при успішній оплаті: чистимо і повідомляємо
+            user_sessions[uid]["cart"] = {}
+            user_sessions[uid].pop("checkout", None)
+
+            await call.message.edit_text(
+                "✅ *Оплату отримано сертифікатом!*\n\n"
+                "Дякуємо за замовлення 💛\n"
+                "Щоб оформити нове — оберіть категорію нижче 👇",
+                parse_mode="Markdown"
+            )
+            await bot.send_message(uid, "Оберіть категорію:", reply_markup=categories_keyboard(uid))
+        else:
+            await call.message.edit_text(
+                "❌ Не вдалося підтвердити оплату сертифікатом.\n"
+                "Спробуйте ще раз або напишіть нам.",
+            )
+
+        # прибираємо з черги, бо mono webhook не буде
+        pending_payments.pop(invoice_ref, None)
+
+        await call.answer()
+        return
+
     payment_url = create_mono_invoice(
-        amount=total,
+        amount=mono_amount,
         description="Оплата замовлення MONAL",
         invoice_ref=invoice_ref
     )
@@ -1002,7 +1074,6 @@ async def pay_full(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
-
 
 @dp.callback_query_handler(lambda c: c.data == "pay_deposit")
 async def pay_deposit(call: types.CallbackQuery):
@@ -1443,6 +1514,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
