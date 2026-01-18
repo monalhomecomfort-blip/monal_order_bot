@@ -1037,7 +1037,7 @@ async def pay_full(call: types.CallbackQuery):
     # сертифікати як товар (для генерації)
     certificates = []
     for item in session["cart"].values():
-        if "сертифікат" in item.get("name", "").lower():
+        if item.get("label") == "Сертифікат":
             certificates.append({"nominal": item["price"]})
 
     try:
@@ -1583,6 +1583,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
