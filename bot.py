@@ -1020,9 +1020,11 @@ async def pay_full(call: types.CallbackQuery):
 
     # ✅ КРОК 7: якщо mono_amount == 0 → 100% сертифікат, mono не викликаємо
     if mono_amount == 0:
+        cert_code = session.get("checkout", {}).get("certificate_code")
+
         ok = send_free_order_to_server(
             order_id=invoice_ref,
-            used_certificates=[]  # коди передамо в КРОЦІ 8
+            used_certificates=[cert_code] if cert_code else []
         )
 
         if ok:
@@ -1312,6 +1314,21 @@ async def mono_webhook(request):
     if status != "success":
         return web.Response(text="ok", status=200)
 
+    # ✅ КРОК 8: якщо був застосований сертифікат — позначаємо його використаним
+    cert_code = checkout.get("certificate_code")
+    if cert_code:
+        try:
+            requests.post(
+                f"{PAY_SERVER_URL}/send-free-order",
+                json={
+                    "orderId": reference,
+                    "usedCertificates": [cert_code],
+                },
+                timeout=8,
+            )
+        except Exception as e:
+            print("❌ CERT MARK USED ERROR:", e)
+
     # --------- формуємо повідомлення адміну ---------
     text = "✅ *ОПЛАТУ ОТРИМАНО*\n\n"
     text += f"👤 *{checkout.get('name', '—')}*\n"
@@ -1514,6 +1531,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
