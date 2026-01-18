@@ -71,7 +71,7 @@ CATEGORIES = {
 PRODUCTS = {
     "diffusers": [
         {"id": "d1", "name": "VESPER 200мл", "price": 1},
-        {"id": "d2", "name": "NOCTURNE 200мл", "price": 1590},
+        {"id": "d2", "name": "NOCTURNE 200мл", "price": 3},
         {"id": "d3", "name": "ROSALYA 200мл", "price": 1590},
         {"id": "d4", "name": "DRIFT 200мл", "price": 1590},
         {"id": "d5", "name": "STONE & SALT 200мл", "price": 1590},
@@ -106,7 +106,7 @@ PRODUCTS = {
         {"id": "r10", "name": "GREEN HAVEN 275мл", "price": 1300},
     ],
     "certificates": [
-        {"id": "c1000", "name": "Сертифікат 1000 грн", "price": 1000, "label": "Сертифікат"},
+        {"id": "c1000", "name": "Сертифікат 1 грн", "price": 1, "label": "Сертифікат"},
         {"id": "c2500", "name": "Сертифікат 2500 грн", "price": 2500, "label": "Сертифікат"},
         {"id": "c3500", "name": "Сертифікат 3500 грн", "price": 3500, "label": "Сертифікат"},
         {"id": "c5000", "name": "Сертифікат 5000 грн", "price": 5000, "label": "Сертифікат"},
@@ -1443,5 +1443,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
