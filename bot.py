@@ -1005,14 +1005,12 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
-    # ⬇️ КЛЮЧОВЕ: суми ДЛЯ ЛОГУ/ТАБЛИЦІ (як було стабільно раніше)
-    # paid_amount = сума, яку платять через mono зараз
-    # due_amount = 0, бо це 100% оплата (не передплата)
+    # ⬇️ СТАБІЛЬНА ЛОГІКА СУМ (НЕ МІНЯЄМО)
     session["checkout"]["total_amount"] = total
     session["checkout"]["paid_amount"] = mono_amount
     session["checkout"]["due_amount"] = 0
 
-    # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
+    # ⬇️ ДЛЯ WEBHOOK
     pending_payments[invoice_ref] = {
         "user_id": uid,
         "cart": session["cart"],
@@ -1020,7 +1018,55 @@ async def pay_full(call: types.CallbackQuery):
         "payment_type": "100% оплата",
     }
 
-    # ✅ КРОК 7: якщо mono_amount == 0 → 100% сертифікат, mono не викликаємо
+    # =====================================================
+    # ✅ ЄДИНИЙ ШЛЯХ: РЕЄСТРУЄМО ЗАМОВЛЕННЯ ЯК САЙТ
+    # =====================================================
+
+    # формуємо itemsText (простий, стабільний)
+    items_text_list = []
+    for item in session["cart"].values():
+        if item.get("type") == "discovery":
+            items_text_list.append(
+                item["name"] + ":\n" + "\n".join(item["aromas"])
+            )
+        else:
+            qty = item.get("qty", 1)
+            items_text_list.append(f'{item["name"]} × {qty}')
+    items_text = "\n".join(items_text_list)
+
+    # сертифікати як товар (для генерації)
+    certificates = []
+    for item in session["cart"].values():
+        if "сертифікат" in item.get("name", "").lower():
+            certificates.append({"nominal": item["price"]})
+
+    try:
+        requests.post(
+            f"{os.getenv('RAILWAY_PUBLIC_URL')}/register-order",
+            json={
+                "orderId": invoice_ref,
+                "text": "🛒 Замовлення з Telegram-бота",
+                "certificates": certificates,
+                "certificateType": session.get("certificates", {}).get(
+                    "physical", False
+                ) and "фізичний" or "електронний",
+                "buyerName": session["checkout"].get("name", ""),
+                "buyerPhone": session["checkout"].get("phone", ""),
+                "delivery": session["checkout"].get("delivery", ""),
+                "itemsText": items_text,
+                "totalAmount": total,
+                "paidAmount": mono_amount,
+                "dueAmount": 0,
+                "paymentLabel": "100% оплата",
+            },
+            timeout=10,
+        )
+    except Exception as e:
+        print("❌ REGISTER ORDER ERROR:", e)
+
+    # =====================================================
+    # ✅ КРОК 7: 100% СЕРТИФІКАТ — БЕЗ MONO
+    # =====================================================
     if mono_amount == 0:
         cert_code = session.get("checkout", {}).get("certificate_code")
 
@@ -1030,7 +1076,6 @@ async def pay_full(call: types.CallbackQuery):
         )
 
         if ok:
-            # як при успішній оплаті: чистимо і повідомляємо
             user_sessions[uid]["cart"] = {}
             user_sessions[uid].pop("checkout", None)
 
@@ -1040,19 +1085,24 @@ async def pay_full(call: types.CallbackQuery):
                 "Щоб оформити нове — оберіть категорію нижче 👇",
                 parse_mode="Markdown"
             )
-            await bot.send_message(uid, "Оберіть категорію:", reply_markup=categories_keyboard(uid))
+            await bot.send_message(
+                uid,
+                "Оберіть категорію:",
+                reply_markup=categories_keyboard(uid),
+            )
         else:
             await call.message.edit_text(
                 "❌ Не вдалося підтвердити оплату сертифікатом.\n"
                 "Спробуйте ще раз або напишіть нам.",
             )
 
-        # прибираємо з черги, бо mono webhook не буде
         pending_payments.pop(invoice_ref, None)
-
         await call.answer()
         return
 
+    # =====================================================
+    # 💳 MONO — ЯК БУЛО (СТАБІЛЬНО)
+    # =====================================================
     payment_url = create_mono_invoice(
         amount=mono_amount,
         description="Оплата замовлення MONAL",
@@ -1533,6 +1583,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
