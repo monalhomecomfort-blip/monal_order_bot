@@ -1113,9 +1113,18 @@ async def pay_full(call: types.CallbackQuery):
             used_certificates=[cert_code] if cert_code else []
         )
 
+        from aiogram.types import ReplyKeyboardRemove
+
         if ok:
             user_sessions[uid]["cart"] = {}
             user_sessions[uid].pop("checkout", None)
+
+            # ⬇️ ОЦЕ НОВЕ (прибирає кнопку "Поділитись номером")
+            await bot.send_message(
+                uid,
+                " ",
+                reply_markup=ReplyKeyboardRemove()
+            )
 
             await call.message.edit_text(
                 "✅ *Оплату отримано сертифікатом!*\n\n"
@@ -1123,11 +1132,13 @@ async def pay_full(call: types.CallbackQuery):
                 "Щоб оформити нове — оберіть категорію нижче 👇",
                 parse_mode="Markdown"
             )
+
             await bot.send_message(
                 uid,
                 "Оберіть категорію:",
                 reply_markup=categories_keyboard(uid),
             )
+
         else:
             await call.message.edit_text(
                 "❌ Не вдалося підтвердити оплату сертифікатом.\n"
@@ -1657,6 +1668,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
