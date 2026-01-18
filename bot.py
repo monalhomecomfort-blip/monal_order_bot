@@ -1000,7 +1000,15 @@ async def pay_full(call: types.CallbackQuery):
     else:
         paid_by_cert, mono_amount = 0, total
 
-    invoice_ref = str(uuid.uuid4())
+    def generate_bot_reference():
+        import random
+        import string
+
+        part1 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        part2 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        return f"{part1}-{part2}"
+
+    invoice_ref = generate_bot_reference()
 
     session.setdefault("checkout", {})
     session["checkout"]["invoice_ref"] = invoice_ref
@@ -1588,6 +1596,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
