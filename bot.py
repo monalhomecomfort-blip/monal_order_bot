@@ -1005,10 +1005,12 @@ async def pay_full(call: types.CallbackQuery):
     session["checkout"]["payment"] = "100% оплата"
     session["checkout"]["paid"] = False
 
-    # ⬇️ КЛЮЧОВЕ: суми (з урахуванням сертифіката)
+    # ⬇️ КЛЮЧОВЕ: суми ДЛЯ ЛОГУ/ТАБЛИЦІ (як було стабільно раніше)
+    # paid_amount = сума, яку платять через mono зараз
+    # due_amount = 0, бо це 100% оплата (не передплата)
     session["checkout"]["total_amount"] = total
-    session["checkout"]["paid_amount"] = paid_by_cert
-    session["checkout"]["due_amount"] = mono_amount
+    session["checkout"]["paid_amount"] = mono_amount
+    session["checkout"]["due_amount"] = 0
 
     # ⬇️ ЗБЕРІГАЄМО ДЛЯ WEBHOOK
     pending_payments[invoice_ref] = {
@@ -1531,6 +1533,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
