@@ -20,6 +20,7 @@ from aiogram.types import (
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
+MONO_BACKEND_URL = os.getenv("MONO_BACKEND_URL")
 PAY_SERVER_URL = os.getenv("PAY_SERVER_URL", "https://monal-mono-pay-production.up.railway.app")
 
 if not API_TOKEN:
@@ -1040,29 +1041,32 @@ async def pay_full(call: types.CallbackQuery):
         if item.get("label") == "Сертифікат":
             certificates.append({"nominal": item["price"]})
 
-    try:
-        requests.post(
-            f"{os.getenv('RAILWAY_PUBLIC_URL')}/register-order",
-            json={
-                "orderId": invoice_ref,
-                "text": "🛒 Замовлення з Telegram-бота",
-                "certificates": certificates,
-                "certificateType": session.get("certificates", {}).get(
-                    "physical", False
-                ) and "фізичний" or "електронний",
-                "buyerName": session["checkout"].get("name", ""),
-                "buyerPhone": session["checkout"].get("phone", ""),
-                "delivery": session["checkout"].get("delivery", ""),
-                "itemsText": items_text,
-                "totalAmount": total,
-                "paidAmount": mono_amount,
-                "dueAmount": 0,
-                "paymentLabel": "100% оплата",
-            },
-            timeout=10,
-        )
-    except Exception as e:
-        print("❌ REGISTER ORDER ERROR:", e)
+    if not MONO_BACKEND_URL:
+        print("❌ MONO_BACKEND_URL missing — register-order skipped")
+    else:
+        try:
+            requests.post(
+                f"{MONO_BACKEND_URL}/register-order",
+                json={
+                    "orderId": invoice_ref,
+                    "text": "🛒 Замовлення з Telegram-бота",
+                    "certificates": certificates,
+                    "certificateType": session.get("certificates", {}).get(
+                        "physical", False
+                    ) and "фізичний" or "електронний",
+                    "buyerName": session["checkout"].get("name", ""),
+                    "buyerPhone": session["checkout"].get("phone", ""),
+                    "delivery": session["checkout"].get("delivery", ""),
+                    "itemsText": items_text,
+                    "totalAmount": total,
+                    "paidAmount": mono_amount,
+                    "dueAmount": 0,
+                    "paymentLabel": "100% оплата",
+                },
+                timeout=10,
+            )
+        except Exception as e:
+            print("❌ REGISTER ORDER ERROR:", e)
 
     # =====================================================
     # ✅ КРОК 7: 100% СЕРТИФІКАТ — БЕЗ MONO
@@ -1583,6 +1587,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
