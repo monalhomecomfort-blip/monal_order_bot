@@ -369,6 +369,28 @@ def send_free_order_to_server(order_id: str, used_certificates=None):
         print("❌ send_free_order_to_server error:", e)
         return False
 
+async def finalize_bot_order(uid: int):
+    if uid not in user_sessions:
+        return
+
+    user_sessions[uid]["cart"] = {}
+    user_sessions[uid].pop("checkout", None)
+
+    from aiogram.types import ReplyKeyboardRemove
+
+    await bot.send_message(
+        uid,
+        " ",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    await bot.send_message(
+        uid,
+        "🛒 Почніть нове замовлення",
+        reply_markup=start_order_keyboard()
+    )
+
+
 # ================== ХЕНДЛЕР/START ==================
 
 @dp.message_handler(commands=["start"])
@@ -1117,20 +1139,13 @@ async def pay_full(call: types.CallbackQuery):
         )
 
         if ok:
-            user_sessions[uid]["cart"] = {}
-            user_sessions[uid].pop("checkout", None)
-
             await call.message.edit_text(
                 "✅ *Оплату отримано сертифікатом!*\n\n"
                 "Дякуємо за замовлення 💛",
                 parse_mode="Markdown"
             )
 
-            await bot.send_message(
-                uid,
-                "🛒 Почніть нове замовлення",
-                reply_markup=start_order_keyboard()
-            )
+            await finalize_bot_order(uid)
 
         else:
             await call.message.edit_text(
@@ -1518,18 +1533,14 @@ async def mono_webhook(request):
     except Exception as e:
         print("❌ BOT → ORDERS_LOG ERROR:", e)
 
-    # 🔽 ОЧИЩАЄМО КОШИК І CHECKOUT ПІСЛЯ УСПІШНОЇ ОПЛАТИ
-    user_sessions[user_id]["cart"] = {}
-    user_sessions[user_id].pop("checkout", None)
-
     # ✅ ПОВІДОМЛЕННЯ ПОКУПЦЮ
     await bot.send_message(
         user_id,
         "✅ Оплату отримано!\n\n"
-        "Дякуємо за замовлення 💛\n"
-        "Щоб оформити нове — оберіть категорію нижче 👇",
-        reply_markup=persistent_keyboard(),
+        "Дякуємо за замовлення 💛",
     )
+
+    await finalize_bot_order(user_id)
 
     # прибираємо з черги
     pending_payments.pop(reference, None)
@@ -1661,6 +1672,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
