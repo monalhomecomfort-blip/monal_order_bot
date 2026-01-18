@@ -155,7 +155,6 @@ def start_keyboard():
     kb.add(InlineKeyboardButton("Почати", callback_data="start_menu"))
     return kb
 
-
 def categories_keyboard(uid=None):
     kb = InlineKeyboardMarkup(row_width=1)
 
@@ -170,7 +169,6 @@ def categories_keyboard(uid=None):
     kb.add(InlineKeyboardButton(cart_text, callback_data="view_cart"))
 
     return kb
-
 
 def persistent_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -188,7 +186,6 @@ def products_keyboard(cat_key):
                 callback_data=f"add:{p['id']}"
             )
         )
-
 
 def products_keyboard(cat_key, user_id):
     kb = InlineKeyboardMarkup(row_width=1)
@@ -232,7 +229,6 @@ def products_keyboard(cat_key, user_id):
 
     return kb
 
-
 def discovery_start_keyboard():
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("✨ Сформувати сет", callback_data="discovery_start"))
@@ -274,7 +270,6 @@ def discovery_aromas_keyboard(selected: list):
 
     return kb
 
-
 def share_phone_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     kb.add(
@@ -285,13 +280,21 @@ def share_phone_keyboard():
     )
     return kb
 
-
 def admin_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(
         KeyboardButton("📦 Активні замовлення"),
         KeyboardButton("✅ Виконані замовлення")
     )
+    return kb
+
+# ================== KEYBOARDS ==================
+
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+def start_order_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add(KeyboardButton("🛒 Почати замовлення"))
     return kb
 
 # ================== CERTIFICATE HELPERS ==================
@@ -1113,30 +1116,20 @@ async def pay_full(call: types.CallbackQuery):
             used_certificates=[cert_code] if cert_code else []
         )
 
-        from aiogram.types import ReplyKeyboardRemove
-
         if ok:
             user_sessions[uid]["cart"] = {}
             user_sessions[uid].pop("checkout", None)
 
-            # ⬇️ ОЦЕ НОВЕ (прибирає кнопку "Поділитись номером")
-            await bot.send_message(
-                uid,
-                " ",
-                reply_markup=ReplyKeyboardRemove()
-            )
-
             await call.message.edit_text(
                 "✅ *Оплату отримано сертифікатом!*\n\n"
-                "Дякуємо за замовлення 💛\n"
-                "Щоб оформити нове — оберіть категорію нижче 👇",
+                "Дякуємо за замовлення 💛",
                 parse_mode="Markdown"
             )
 
             await bot.send_message(
                 uid,
-                "Оберіть категорію:",
-                reply_markup=categories_keyboard(uid),
+                "🛒 Почніть нове замовлення",
+                reply_markup=start_order_keyboard()
             )
 
         else:
@@ -1668,6 +1661,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
