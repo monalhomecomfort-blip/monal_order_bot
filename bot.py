@@ -931,6 +931,19 @@ async def receive_certificate_code(m: types.Message):
         parse_mode="Markdown"
     )
 
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton(
+            "➡️ Продовжити оплату",
+            callback_data="pay_full"
+        )
+    )
+
+    await m.answer(
+        "Натисніть кнопку нижче, щоб завершити оплату.",
+        reply_markup=kb
+    )
+
 # ================== CHECKOUT: РЕЗЮМЕ ==================
 
 async def show_order_summary(uid, chat_id):
@@ -1644,6 +1657,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
