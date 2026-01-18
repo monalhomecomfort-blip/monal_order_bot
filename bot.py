@@ -1058,6 +1058,7 @@ async def pay_full(call: types.CallbackQuery):
                 f"{MONO_BACKEND_URL}/register-order",
                 json={
                     "orderId": invoice_ref,
+                    "userId": uid,
                     "text": "🛒 Замовлення з Telegram-бота",
                     "source": "bot",
                     "certificates": certificates,
@@ -1597,6 +1598,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
