@@ -472,7 +472,8 @@ async def add_to_cart(call: types.CallbackQuery):
         {
             "name": product["name"],
             "price": product["price"],
-            "qty": 0
+            "qty": 0,
+            "label": product.get("label")
         }
     )
     cart[product_id]["qty"] += 1
@@ -1587,6 +1588,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
