@@ -866,6 +866,16 @@ async def checkout_payment(m: types.Message):
             InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit"),
         )
 
+        # ➕ КНОПКА ОПЛАТИ СЕРТИФІКАТОМ
+        # показуємо ТІЛЬКИ якщо в кошику НЕМА сертифікату як товару
+        if not cart_has_certificate(session["cart"]):
+            kb.add(
+                InlineKeyboardButton(
+                    "🎟 Оплатити сертифікатом",
+                    callback_data="pay_by_certificate"
+                )
+            )
+
         await m.answer(
             "💳 Оберіть спосіб оплати:",
             reply_markup=kb
@@ -1203,6 +1213,42 @@ async def pay_deposit(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
+
+# ================== СЕРТИФІКАТИ ПОГАШЕННЯ ==================
+
+@dp.callback_query_handler(lambda c: c.data == "pay_by_certificate")
+async def pay_by_certificate(call: types.CallbackQuery):
+    uid = call.from_user.id
+    session = user_sessions.setdefault(uid, {})
+    checkout = session.setdefault("checkout", {})
+
+    checkout["waiting_certificate"] = True
+
+    await call.message.answer(
+        "🎟 Введіть код сертифіката одним повідомленням:"
+    )
+    await call.answer()
+
+@dp.message_handler(
+    lambda m: (
+        "checkout" in user_sessions.get(m.from_user.id, {})
+        and user_sessions[m.from_user.id]["checkout"].get("waiting_certificate") is True
+    )
+)
+async def receive_certificate_code(m: types.Message):
+    uid = m.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    code = m.text.strip().upper()
+
+    checkout["certificate_code"] = code
+    checkout["waiting_certificate"] = False
+
+    await m.answer(
+        f"🎟 Сертифікат **{code}** збережено.\n"
+        "Перевірка буде на наступному кроці.",
+        parse_mode="Markdown"
+    )
 
 # ================== CHECKOUT: ПІДТВЕРДЖЕННЯ ==================
 
@@ -1598,6 +1644,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
