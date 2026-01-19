@@ -380,7 +380,7 @@ async def finalize_bot_order(uid: int):
 
     await bot.send_message(
         uid,
-        " ",
+        "⬇️",
         reply_markup=ReplyKeyboardRemove()
     )
 
@@ -389,7 +389,6 @@ async def finalize_bot_order(uid: int):
         "🛒 Почніть нове замовлення",
         reply_markup=start_order_keyboard()
     )
-
 
 # ================== ХЕНДЛЕР/START ==================
 
@@ -1459,15 +1458,15 @@ async def mono_webhook(request):
     if status != "success":
         return web.Response(text="ok", status=200)
 
-    # ✅ КРОК 8: якщо був застосований сертифікат — позначаємо його використаним
+    # ✅ КРОК 8: якщо був застосований сертифікат — ПОЗНАЧАЄМО ЙОГО ВИКОРИСТАНИМ
     cert_code = checkout.get("certificate_code")
     if cert_code:
         try:
             requests.post(
-                f"{PAY_SERVER_URL}/send-free-order",
+                f"{PAY_SERVER_URL}/mark-certificate-used",
                 json={
+                    "code": cert_code,
                     "orderId": reference,
-                    "usedCertificates": [cert_code],
                 },
                 timeout=8,
             )
@@ -1672,6 +1671,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
