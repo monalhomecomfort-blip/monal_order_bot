@@ -972,54 +972,62 @@ async def receive_certificate_code(m: types.Message):
 
     # ================== 100% СЕРТИФІКАТ ==================
     if mono_amount == 0:
-        # гарантуємо orderId
+        # 🔐 гарантуємо orderId
         if not checkout.get("invoice_ref"):
-            import random, string
-            checkout["invoice_ref"] = (
-                "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-                + "-"
-                + "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            )
+            import random
+            import string
+            part1 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            part2 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            checkout["invoice_ref"] = f"{part1}-{part2}"
 
         invoice_ref = checkout["invoice_ref"]
 
-        # 1️⃣ реєструємо замовлення
-        requests.post(
-            f"{MONO_BACKEND_URL}/register-order",
-            json={
-                "orderId": invoice_ref,
-                "userId": uid,
-                "text": "🛒 Замовлення з Telegram-бота",
-                "source": "bot",
-                "usedCertificates": [checkout.get("certificate_code")],
-                "buyerName": checkout.get("name", ""),
-                "buyerPhone": checkout.get("phone", ""),
-                "delivery": checkout.get("delivery", ""),
-                "itemsText": "Оплачено сертифікатом 100%",
-                "totalAmount": total,
-                "paidAmount": total,
-                "dueAmount": 0,
-                "paymentLabel": "Сертифікат 100%",
-            },
-            timeout=10,
-        )
+        # 🧾 1️⃣ РЕЄСТРУЄМО ЗАМОВЛЕННЯ (ОБОВʼЯЗКОВО) — ЗАХИСТ ВІД ПАДІННЯ
+        if not MONO_BACKEND_URL:
+            await m.answer("❌ MONO_BACKEND_URL missing. Не можу завершити оплату сертифікатом.")
+            return
 
-        # 2️⃣ гасимо сертифікат
+        try:
+            r = requests.post(
+                f"{MONO_BACKEND_URL}/register-order",
+                json={
+                    "orderId": invoice_ref,
+                    "userId": uid,
+                    "text": "🛒 Замовлення з Telegram-бота",
+                    "source": "bot",
+                    "usedCertificates": [checkout.get("certificate_code")],
+                    "buyerName": checkout.get("name", ""),
+                    "buyerPhone": checkout.get("phone", ""),
+                    "delivery": checkout.get("delivery", ""),
+                    "itemsText": "Оплачено сертифікатом 100%",
+                    "totalAmount": total,
+                    "paidAmount": total,
+                    "dueAmount": 0,
+                    "paymentLabel": "Сертифікат 100%",
+                },
+                timeout=10,
+            )
+            if not r.ok:
+                await m.answer("❌ Не вдалося зареєструвати замовлення на сервері (register-order).")
+                return
+        except Exception as e:
+            await m.answer("❌ Помилка реєстрації замовлення (register-order).")
+            return
+
+        # 🎟 2️⃣ ПОГАШАЄМО СЕРТИФІКАТ
         ok = send_free_order_to_server(
             order_id=invoice_ref,
             used_certificates=[checkout.get("certificate_code")]
         )
 
         if ok:
-            # 3️⃣ адмін-сповіщення
-            admin_text = (
-                "🔔 *НОВЕ ЗАМОВЛЕННЯ*\n\n"
-                f"👤 {checkout.get('name','—')}\n"
-                f"📞 {checkout.get('phone','—')}\n"
-                f"📦 {checkout.get('delivery','—')}\n"
-                f"💳 Сертифікат 100%\n\n"
-                "🛒 *Товари:*\n"
-            )
+            # 📩 СПОВІЩЕННЯ АДМІНУ
+            admin_text = "🔔 *НОВЕ ЗАМОВЛЕННЯ*\n\n"
+            admin_text += f"👤 {checkout.get('name', '—')}\n"
+            admin_text += f"📞 {checkout.get('phone', '—')}\n"
+            admin_text += f"📦 {checkout.get('delivery', '—')}\n"
+            admin_text += f"💳 Сертифікат 100%\n\n"
+            admin_text += "🛒 *Товари:*\n"
 
             for item in cart.values():
                 if item.get("type") == "discovery":
@@ -1039,21 +1047,22 @@ async def receive_certificate_code(m: types.Message):
                 f"🧾 ref: {invoice_ref}"
             )
 
-            await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
+            try:
+                await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
+            except Exception:
+                pass
 
             await finalize_order(
                 uid,
                 "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
             )
         else:
-            await m.answer("❌ Не вдалося завершити оплату сертифікатом.")
+            await m.answer("❌ Не вдалося завершити оплату сертифікатом (send-free-order).")
 
-        return  # ❗ ВИХІД ТІЛЬКИ ТУТ
+        return  # ❗ КРИТИЧНО: вихід лише тут
 
 
     # ================== СЕРТИФІКАТ + MONO ==================
-    # ❗ НІЯКОГО return ВИЩЕ ЦЬОГО МІСЦЯ
-
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
         InlineKeyboardButton(
@@ -1740,6 +1749,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
