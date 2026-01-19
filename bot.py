@@ -944,7 +944,7 @@ async def receive_certificate_code(m: types.Message):
         parse_mode="Markdown"
     )
 
-    # ➕ Показуємо розрахунок оплати
+    # ➕ Розрахунок оплати
     cart = user_sessions[uid].get("cart", {})
     total = 0
 
@@ -966,6 +966,34 @@ async def receive_certificate_code(m: types.Message):
         f"💳 Через monobank: {mono_amount} грн\n\n"
         f"Продовжуємо оформлення 👇",
         parse_mode="Markdown"
+    )
+
+    # ================== ПЕРЕХІД ДО ОПЛАТИ ==================
+
+    # 1️⃣ Якщо mono не потрібен — одразу запускаємо pay_full
+    if mono_amount == 0:
+        fake_call = types.CallbackQuery(
+            id="cert_only",
+            from_user=m.from_user,
+            chat_instance="cert",
+            message=m,
+            data="pay_full",
+        )
+        await pay_full(fake_call)
+        return
+
+    # 2️⃣ Якщо потрібен mono — показуємо кнопку оплати
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton(
+            f"💳 Оплатити через monobank ({mono_amount} грн)",
+            callback_data="pay_full"
+        )
+    )
+
+    await m.answer(
+        "Для завершення замовлення виконайте оплату 👇",
+        reply_markup=kb
     )
 
 # ================== CHECKOUT: РЕЗЮМЕ ==================
@@ -1643,6 +1671,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
