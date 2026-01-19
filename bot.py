@@ -886,6 +886,7 @@ async def checkout_payment(m: types.Message):
         kb.add(
             InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
             InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit"),
+            InlineKeyboardButton("🎟 Оплатити сертифікатом", callback_data="enter_certificate"),
         )
 
         await m.answer(
@@ -940,6 +941,30 @@ async def receive_certificate_code(m: types.Message):
         f"✅ Сертифікат **{code}** підтверджено.\n"
         f"Номінал: **{nominal} грн**.\n"
         "Переходимо далі.",
+        parse_mode="Markdown"
+    )
+
+    # ➕ Показуємо розрахунок оплати
+    cart = user_sessions[uid].get("cart", {})
+    total = 0
+
+    for item in cart.values():
+        if item.get("type") == "discovery":
+            total += item["price"]
+        else:
+            total += item["price"] * item.get("qty", 1)
+
+    paid_by_cert, mono_amount = calculate_amounts_with_certificate(
+        total,
+        nominal
+    )
+
+    await m.answer(
+        f"💳 *Розрахунок оплати:*\n\n"
+        f"🧾 Сума замовлення: {total} грн\n"
+        f"🎟 Сертифікатом: {paid_by_cert} грн\n"
+        f"💳 Через monobank: {mono_amount} грн\n\n"
+        f"Продовжуємо оформлення 👇",
         parse_mode="Markdown"
     )
 
@@ -1260,14 +1285,27 @@ async def confirm_order(call: types.CallbackQuery):
 
     # суми з checkout (ВЖЕ ПОРАХОВАНІ)
     total_amount = checkout.get("total_amount", 0)
-    paid_amount = checkout.get("paid_amount", 0)
+    paid_amount = checkout.get("paid_amount", 0)   # це mono
     due_amount = checkout.get("due_amount", 0)
 
-    admin_text += (
-        f"\n💰 Сума замовлення: {total_amount} грн"
-        f"\n💳 Сплачено: {paid_amount} грн"
-        f"\n📦 До оплати: {due_amount} грн"
-    )
+    cert_nominal = checkout.get("certificate_nominal")
+
+    admin_text += f"\n💰 Сума замовлення: {total_amount} грн"
+
+    if cert_nominal:
+        paid_by_cert, paid_by_mono = calculate_amounts_with_certificate(
+            total_amount,
+            cert_nominal
+        )
+
+        admin_text += (
+            f"\n🎟 Сертифікатом: {paid_by_cert} грн"
+            f"\n💳 Через mono: {paid_by_mono} грн"
+        )
+    else:
+        admin_text += f"\n💳 Сплачено: {paid_amount} грн"
+
+    admin_text += f"\n📦 До оплати: {due_amount} грн"
 
     await bot.send_message(
         ADMIN_ID,
@@ -1605,6 +1643,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
