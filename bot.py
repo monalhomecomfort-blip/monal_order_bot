@@ -1015,17 +1015,52 @@ async def receive_certificate_code(m: types.Message):
     )
 
     if ok:
+        # ================== 📩 СПОВІЩЕННЯ АДМІНУ ==================
+        admin_text = "🔔 *НОВЕ ЗАМОВЛЕННЯ*\n\n"
+        admin_text += f"👤 {checkout.get('name', '—')}\n"
+        admin_text += f"📞 {checkout.get('phone', '—')}\n"
+        admin_text += f"📦 {checkout.get('delivery', '—')}\n"
+        admin_text += f"💳 Сертифікат 100%\n\n"
+        admin_text += "🛒 *Товари:*\n"
+
+        for item in cart.values():
+            if item.get("type") == "discovery":
+                admin_text += (
+                    f"🎁 {item['name']} — {item['price']} грн\n"
+                    + "\n".join([f" • {a}" for a in item["aromas"]])
+                    + "\n\n"
+                )
+            else:
+                qty = item.get("qty", 1)
+                admin_text += (
+                    f"{item['name']} × {qty} — "
+                    f"{item['price'] * qty} грн\n"
+                )
+
+        admin_text += (
+            f"\n💰 *Сума замовлення:* {total} грн\n"
+            f"🎟 *Оплачено сертифікатом:* {total} грн\n"
+            f"📦 *До оплати:* 0 грн\n"
+            f"🧾 ref: {invoice_ref}"
+        )
+
+        await bot.send_message(
+            ADMIN_ID,
+            admin_text,
+            parse_mode="Markdown"
+        )
+
         await finalize_order(
             uid,
             "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
         )
+
     else:
         await m.answer(
             "❌ Не вдалося завершити оплату сертифікатом. Спробуйте ще раз."
         )
 
     return
-
 
     # 2️⃣ Якщо потрібен mono — показуємо кнопку оплати
     kb = InlineKeyboardMarkup(row_width=1)
@@ -1714,6 +1749,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
