@@ -1215,41 +1215,7 @@ async def pay_full(call: types.CallbackQuery):
             )
         except Exception as e:
             print("❌ REGISTER ORDER ERROR:", e)
-
-    # =====================================================
-    # ✅ КРОК 7: 100% СЕРТИФІКАТ — БЕЗ MONO
-    # =====================================================
-    if mono_amount == 0:
-        cert_code = session.get("checkout", {}).get("certificate_code")
-
-        ok = send_free_order_to_server(
-            order_id=invoice_ref,
-            used_certificates=[cert_code] if cert_code else []
-        )
-
-        if ok:
-            try:
-                await call.message.edit_text(
-                    "✅ *Оплату отримано сертифікатом!*",
-                    parse_mode="Markdown"
-                )
-            except Exception:
-                pass
-
-            await finalize_order(
-                uid,
-                "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
-            )
-        else:
-            await call.message.edit_text(
-                "❌ Не вдалося підтвердити оплату сертифікатом.\n"
-                "Спробуйте ще раз або напишіть нам.",
-            )
-
-        pending_payments.pop(invoice_ref, None)
-        await call.answer()
-        return
-
+    
     # =====================================================
     # 💳 MONO — ЯК БУЛО (СТАБІЛЬНО)
     # =====================================================
@@ -1748,6 +1714,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
