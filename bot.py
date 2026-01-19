@@ -972,7 +972,16 @@ async def receive_certificate_code(m: types.Message):
 
     # ================== 100% СЕРТИФІКАТ — ФІНАЛІЗАЦІЯ ==================
     if mono_amount == 0:
-        invoice_ref = checkout.get("invoice_ref")
+        # 🔐 гарантуємо orderId для 100% сертифіката
+        if not checkout.get("invoice_ref"):
+            import random
+            import string
+
+            part1 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            part2 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            checkout["invoice_ref"] = f"{part1}-{part2}"
+
+        invoice_ref = checkout["invoice_ref"]
 
         ok = send_free_order_to_server(
             order_id=invoice_ref,
@@ -1712,6 +1721,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
