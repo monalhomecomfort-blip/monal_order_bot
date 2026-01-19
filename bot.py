@@ -373,17 +373,27 @@ async def finalize_bot_order(uid: int):
     if uid not in user_sessions:
         return
 
+    from aiogram.types import ReplyKeyboardRemove
+
+    # 1. ОЧИЩАЄМО СТАН
     user_sessions[uid]["cart"] = {}
     user_sessions[uid].pop("checkout", None)
 
-    from aiogram.types import ReplyKeyboardRemove
-
+    # 2. ПРИМУСОВО ЗНІМАЄМО КЛАВІАТУРУ
     await bot.send_message(
         uid,
         " ",
         reply_markup=ReplyKeyboardRemove()
     )
 
+    # 3. ПОВТОРНО СТАВИМО КНОПКУ (Telegram-фікс)
+    await bot.send_message(
+        uid,
+        " ",
+        reply_markup=start_order_keyboard()
+    )
+
+    # 4. ФІНАЛЬНЕ ПОВІДОМЛЕННЯ
     await bot.send_message(
         uid,
         "🛒 Почніть нове замовлення",
@@ -1638,3 +1648,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
