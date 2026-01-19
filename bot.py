@@ -906,7 +906,7 @@ async def checkout_payment(m: types.Message):
             kb.add(
                 InlineKeyboardButton(
                     "🎟 Оплатити сертифікатом",
-                    callback_data="pay_by_certificate"
+                    callback_data="enter_certificate"
                 )
             )
 
@@ -1648,4 +1648,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
