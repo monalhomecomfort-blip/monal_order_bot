@@ -1123,7 +1123,9 @@ async def pay_full(call: types.CallbackQuery):
     certificates = []
     for item in session["cart"].values():
         if item.get("label") == "Сертифікат":
-            certificates.append({"nominal": item["price"]})
+            qty = item.get("qty", 1)
+            for _ in range(qty):
+                certificates.append({"nominal": item["price"]})
 
     if not MONO_BACKEND_URL:
         print("❌ MONO_BACKEND_URL missing — register-order skipped")
@@ -1416,6 +1418,20 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
     data = response.json()
     return data["pageUrl"]
 
+# ================== BOT FINALIZE FROM SERVER ==================
+
+async def bot_finalize(request: web.Request):
+    data = await request.json()
+    uid = data.get("userId")
+
+    if uid and uid in user_sessions:
+        await finalize_order(
+            uid,
+            "✅ Оплату отримано!\n\nДякуємо за замовлення 💛"
+        )
+
+    return web.Response(text="ok")
+
 # ================== MONO WEBHOOK ==================
 
 async def mono_webhook(request):
@@ -1664,6 +1680,7 @@ if __name__ == "__main__":
     app = web.Application()
     app.router.add_post("/webhook/telegram", telegram_webhook)
     app.router.add_post("/webhook/mono", mono_webhook)
+    app.router.add_post("/bot-finalize", bot_finalize)
     app.on_startup.append(on_startup)
 
     web.run_app(
@@ -1671,6 +1688,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
