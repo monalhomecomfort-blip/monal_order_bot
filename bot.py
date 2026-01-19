@@ -972,7 +972,7 @@ async def receive_certificate_code(m: types.Message):
 
     # ================== 100% СЕРТИФІКАТ — ФІНАЛІЗАЦІЯ ==================
     if mono_amount == 0:
-        # 🔐 гарантуємо orderId для 100% сертифіката
+        # 🔐 гарантуємо orderId
         if not checkout.get("invoice_ref"):
             import random
             import string
@@ -983,22 +983,49 @@ async def receive_certificate_code(m: types.Message):
 
         invoice_ref = checkout["invoice_ref"]
 
-        ok = send_free_order_to_server(
-            order_id=invoice_ref,
-            used_certificates=[checkout.get("certificate_code")]
+        # 🧾 1️⃣ РЕЄСТРУЄМО ЗАМОВЛЕННЯ (ОБОВʼЯЗКОВО)
+        try:
+            requests.post(
+                f"{MONO_BACKEND_URL}/register-order",
+                json={
+                    "orderId": invoice_ref,
+                    "userId": uid,
+                    "text": "🛒 Замовлення з Telegram-бота",
+                    "source": "bot",
+                    "usedCertificates": [checkout.get("certificate_code")],
+                    "buyerName": checkout.get("name", ""),
+                    "buyerPhone": checkout.get("phone", ""),
+                    "delivery": checkout.get("delivery", ""),
+                    "itemsText": "Оплачено сертифікатом 100%",
+                    "totalAmount": total,
+                    "paidAmount": total,
+                    "dueAmount": 0,
+                    "paymentLabel": "Сертифікат 100%",
+                },
+                timeout=10,
+            )
+        except Exception as e:
+            await m.answer("❌ Не вдалося зареєструвати замовлення.")
+            return
+
+    # 🎟 2️⃣ ПОГАШАЄМО СЕРТИФІКАТ
+    ok = send_free_order_to_server(
+        order_id=invoice_ref,
+        used_certificates=[checkout.get("certificate_code")]
+    )
+
+    if ok:
+        await finalize_order(
+            uid,
+            "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
+        )
+    else:
+        await m.answer(
+            "❌ Не вдалося завершити оплату сертифікатом. Спробуйте ще раз."
         )
 
-        if ok:
-            await finalize_order(
-                uid,
-                "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
-            )
-        else:
-            await m.answer(
-                "❌ Не вдалося завершити оплату сертифікатом. Спробуйте ще раз."
-            )
+    return
 
-        return
 
     # 2️⃣ Якщо потрібен mono — показуємо кнопку оплати
     kb = InlineKeyboardMarkup(row_width=1)
@@ -1721,6 +1748,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
