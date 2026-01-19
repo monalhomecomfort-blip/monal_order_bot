@@ -1173,7 +1173,7 @@ async def pay_full(call: types.CallbackQuery):
                     "totalAmount": total,
                     "paidAmount": mono_amount,
                     "dueAmount": 0,
-                    "paymentLabel": "paymentLabel": session["checkout"].get("payment"),
+                    "paymentLabel": session["checkout"].get("payment"),
                 },
                 timeout=10,
             )
@@ -1712,6 +1712,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
