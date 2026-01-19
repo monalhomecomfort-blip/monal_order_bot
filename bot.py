@@ -11,6 +11,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    ReplyKeyboardRemove,
     MenuButtonWebApp,
     WebAppInfo,
 )
@@ -293,6 +294,40 @@ def admin_keyboard():
         KeyboardButton("✅ Виконані замовлення")
     )
     return kb
+
+async def finalize_order(uid: int, text: str):
+    """
+    ЄДИНА фіналізація замовлення (UX).
+    Робить завжди:
+    - чистить cart + checkout
+    - прибирає reply-клавіатуру (щоб пропала кнопка "📱 Поділитись номером")
+    - повертає кнопку "🛒 Почати замовлення"
+    """
+    # 1) чистимо дані
+    session = user_sessions.get(uid)
+    if session:
+        session["cart"] = {}
+        session.pop("checkout", None)
+
+    # 2) прибираємо контактну клавіатуру / будь-яку reply
+    await bot.send_message(
+        uid,
+        text,
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    # 3) повертаємо нормальний старт
+    await bot.send_message(
+        uid,
+        "Оберіть категорію:",
+        reply_markup=categories_keyboard(uid)
+    )
+
+    await bot.send_message(
+        uid,
+        "⬇️ Для нового замовлення натисніть кнопку:",
+        reply_markup=persistent_keyboard()
+    )
 
 # ================== CERTIFICATE HELPERS ==================
 
@@ -1091,19 +1126,17 @@ async def pay_full(call: types.CallbackQuery):
         )
 
         if ok:
-            user_sessions[uid]["cart"] = {}
-            user_sessions[uid].pop("checkout", None)
+            try:
+                await call.message.edit_text(
+                    "✅ *Оплату отримано сертифікатом!*",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
 
-            await call.message.edit_text(
-                "✅ *Оплату отримано сертифікатом!*\n\n"
-                "Дякуємо за замовлення 💛\n"
-                "Щоб оформити нове — оберіть категорію нижче 👇",
-                parse_mode="Markdown"
-            )
-            await bot.send_message(
+            await finalize_order(
                 uid,
-                "Оберіть категорію:",
-                reply_markup=categories_keyboard(uid),
+                "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
             )
         else:
             await call.message.edit_text(
@@ -1260,11 +1293,7 @@ async def confirm_order(call: types.CallbackQuery):
         "Ми зв’яжемось з вами для підтвердження 💛",
         parse_mode="Markdown"
     )
-
-    # очищаємо кошик і checkout після завершення
-    user_sessions[uid]["cart"] = {}
-    user_sessions[uid].pop("checkout", None)
-
+    
     await call.answer()
 
 # ================== CART CONTROL ==================
@@ -1279,7 +1308,6 @@ async def cart_inc(call: types.CallbackQuery):
 
     await call.answer()
     await view_cart(call)
-
 
 @dp.callback_query_handler(lambda c: c.data.startswith("cart_dec:"))
 async def cart_dec(call: types.CallbackQuery):
@@ -1455,17 +1483,9 @@ async def mono_webhook(request):
     except Exception as e:
         print("❌ BOT → ORDERS_LOG ERROR:", e)
 
-    # 🔽 ОЧИЩАЄМО КОШИК І CHECKOUT ПІСЛЯ УСПІШНОЇ ОПЛАТИ
-    user_sessions[user_id]["cart"] = {}
-    user_sessions[user_id].pop("checkout", None)
-
-    # ✅ ПОВІДОМЛЕННЯ ПОКУПЦЮ
-    await bot.send_message(
+    await finalize_order(
         user_id,
-        "✅ Оплату отримано!\n\n"
-        "Дякуємо за замовлення 💛\n"
-        "Щоб оформити нове — оберіть категорію нижче 👇",
-        reply_markup=persistent_keyboard(),
+        "✅ Оплату отримано!\n\nДякуємо за замовлення 💛"
     )
 
     # прибираємо з черги
@@ -1598,6 +1618,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
