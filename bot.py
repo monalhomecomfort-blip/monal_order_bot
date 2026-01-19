@@ -1640,7 +1640,7 @@ async def admin_completed_orders(m: types.Message):
 if __name__ == "__main__":
     app = web.Application()
     app.router.add_post("/webhook/telegram", telegram_webhook)
-    app.router.add_post("/webhook/mono", mono_webhook)
+    app.router.add_post("/mono-webhook", mono_webhook)
     app.on_startup.append(on_startup)
 
     web.run_app(
@@ -1648,5 +1648,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
