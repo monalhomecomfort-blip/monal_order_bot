@@ -21,7 +21,10 @@ API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 MONO_BACKEND_URL = os.getenv("MONO_BACKEND_URL")
-PAY_SERVER_URL = os.getenv("PAY_SERVER_URL", "https://monal-mono-pay-production.up.railway.app")
+PAY_SERVER_URL = os.getenv(
+    "PAY_SERVER_URL",
+    "https://monal-mono-pay-production.up.railway.app"
+)
 
 if not API_TOKEN:
     raise RuntimeError("BOT_TOKEN missing")
@@ -118,8 +121,12 @@ PRODUCTS = {
     ],
 }
 
+# ================== СЕСІЇ ==================
+
 user_sessions = {}
 pending_payments = {}
+
+# ================== ДОПОМІЖНІ ==================
 
 def cart_count(cart: dict) -> int:
     count = 0
@@ -152,27 +159,48 @@ DISCOVERY_AROMAS = [
 
 def start_keyboard():
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("Почати", callback_data="start_menu"))
+    kb.add(
+        InlineKeyboardButton(
+            "Почати",
+            callback_data="start_menu"
+        )
+    )
     return kb
+
 
 def categories_keyboard(uid=None):
     kb = InlineKeyboardMarkup(row_width=1)
 
     for key, title in CATEGORIES.items():
-        kb.add(InlineKeyboardButton(title, callback_data=f"cat:{key}"))
+        kb.add(
+            InlineKeyboardButton(
+                title,
+                callback_data=f"cat:{key}"
+            )
+        )
 
     cart_items = 0
     if uid and uid in user_sessions:
-        cart_items = cart_count(user_sessions[uid].get("cart", {}))
+        cart_items = cart_count(
+            user_sessions[uid].get("cart", {})
+        )
 
     cart_text = f"🛒 Кошик ({cart_items})" if cart_items else "🛒 Кошик"
-    kb.add(InlineKeyboardButton(cart_text, callback_data="view_cart"))
 
+    kb.add(
+        InlineKeyboardButton(
+            cart_text,
+            callback_data="view_cart"
+        )
+    )
     return kb
+
 
 def persistent_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("🛒 Почати замовлення"))
+    kb.add(
+        KeyboardButton("🛒 Почати замовлення")
+    )
     return kb
 
 
@@ -186,6 +214,7 @@ def products_keyboard(cat_key):
                 callback_data=f"add:{p['id']}"
             )
         )
+
 
 def products_keyboard(cat_key, user_id):
     kb = InlineKeyboardMarkup(row_width=1)
@@ -217,22 +246,41 @@ def products_keyboard(cat_key, user_id):
 
         kb.add(
             InlineKeyboardButton(
-                "☑️ Друкований сертифікат" if is_physical else "☐ Хочу друкований сертифікат",
+                "☑️ Друкований сертифікат"
+                if is_physical
+                else "☐ Хочу друкований сертифікат",
                 callback_data="toggle_physical_certificate"
             )
         )
 
     kb.add(
-        InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"),
-        InlineKeyboardButton(cart_text, callback_data="view_cart"),
+        InlineKeyboardButton(
+            "⬅️ Назад",
+            callback_data="back_categories"
+        ),
+        InlineKeyboardButton(
+            cart_text,
+            callback_data="view_cart"
+        ),
     )
 
     return kb
 
+
 def discovery_start_keyboard():
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("✨ Сформувати сет", callback_data="discovery_start"))
-    kb.add(InlineKeyboardButton("⬅️ Назад до категорій", callback_data="back_categories"))
+    kb.add(
+        InlineKeyboardButton(
+            "✨ Сформувати сет",
+            callback_data="discovery_start"
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
+            "⬅️ Назад до категорій",
+            callback_data="back_categories"
+        )
+    )
     return kb
 
 
@@ -240,7 +288,6 @@ def discovery_aromas_keyboard(selected: list):
     kb = InlineKeyboardMarkup(row_width=1)
 
     for aroma in DISCOVERY_AROMAS:
-        # відмітка вибраних
         mark = "✓ " if aroma in selected else ""
         kb.add(
             InlineKeyboardButton(
@@ -265,13 +312,28 @@ def discovery_aromas_keyboard(selected: list):
         )
 
     # ⬇️ ОЦЕ ДОДАНО: кнопка КОШИК
-    kb.add(InlineKeyboardButton("🛒 Кошик", callback_data="view_cart"))
-    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_categories"))
+    kb.add(
+        InlineKeyboardButton(
+            "🛒 Кошик",
+            callback_data="view_cart"
+        )
+    )
+
+    kb.add(
+        InlineKeyboardButton(
+            "⬅️ Назад",
+            callback_data="back_categories"
+        )
+    )
 
     return kb
 
+
 def share_phone_keyboard():
-    kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    kb = ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
     kb.add(
         KeyboardButton(
             text="📱 Поділитись номером телефону",
@@ -279,6 +341,7 @@ def share_phone_keyboard():
         )
     )
     return kb
+
 
 def admin_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -292,10 +355,14 @@ def admin_keyboard():
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+
 def start_order_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("🛒 Почати замовлення"))
+    kb.add(
+        KeyboardButton("🛒 Почати замовлення")
+    )
     return kb
+
 
 # ================== CERTIFICATE HELPERS ==================
 
@@ -311,15 +378,16 @@ def cart_has_certificate(cart: dict) -> bool:
             return True
     return False
 
+
 def can_apply_certificate(cart: dict) -> bool:
     """
-    Сертифікат можна вводити,
-    якщо в кошику НЕ купують сертифікат
+    Сертифікат можна вводити, якщо в кошику НЕ купують сертифікат
     """
     for item in cart.values():
         if "сертифікат" in item.get("name", "").lower():
             return False
-    return True    
+    return True
+
 
 def check_certificate_remote(code: str):
     """
@@ -332,13 +400,18 @@ def check_certificate_remote(code: str):
             json={"code": code},
             timeout=8,
         )
+
         data = r.json() if r.ok else {}
+
         if data.get("valid") is True:
             return True, int(data.get("nominal") or 0)
+
         return False, None
+
     except Exception as e:
         print("❌ check_certificate_remote error:", e)
         return False, None
+
 
 def calculate_amounts_with_certificate(total: int, certificate_nominal: int):
     """
@@ -346,11 +419,14 @@ def calculate_amounts_with_certificate(total: int, certificate_nominal: int):
     """
     if certificate_nominal >= total:
         return total, 0
+
     return certificate_nominal, total - certificate_nominal
+
 
 def send_free_order_to_server(order_id: str, used_certificates=None):
     """
-    Викликає Railway /send-free-order для 100% оплати сертифікатом
+    Викликає Railway /send-free-order
+    для 100% оплати сертифікатом
     """
     payload = {"orderId": order_id}
 
@@ -365,42 +441,34 @@ def send_free_order_to_server(order_id: str, used_certificates=None):
             timeout=8,
         )
         return r.ok
+
     except Exception as e:
         print("❌ send_free_order_to_server error:", e)
         return False
+
 
 async def finalize_bot_order(uid: int):
     if uid not in user_sessions:
         return
 
-    from aiogram.types import ReplyKeyboardRemove
-
-    # 1. ОЧИЩАЄМО СТАН
     user_sessions[uid]["cart"] = {}
     user_sessions[uid].pop("checkout", None)
 
-    # 2. ПРИМУСОВО ЗНІМАЄМО КЛАВІАТУРУ
+    from aiogram.types import ReplyKeyboardRemove
+
     await bot.send_message(
         uid,
         " ",
         reply_markup=ReplyKeyboardRemove()
     )
 
-    # 3. ПОВТОРНО СТАВИМО КНОПКУ (Telegram-фікс)
-    await bot.send_message(
-        uid,
-        " ",
-        reply_markup=start_order_keyboard()
-    )
-
-    # 4. ФІНАЛЬНЕ ПОВІДОМЛЕННЯ
     await bot.send_message(
         uid,
         "🛒 Почніть нове замовлення",
         reply_markup=start_order_keyboard()
     )
 
-# ================== ХЕНДЛЕР/START ==================
+# ================== ХЕНДЛЕР / START ==================
 
 @dp.message_handler(commands=["start"])
 async def start(message: types.Message):
@@ -439,13 +507,14 @@ async def start_order(message: types.Message):
         reply_markup=categories_keyboard(message.from_user.id)
     )
 
+
 # ================== КАТЕГОРІЇ ==================
 
 @dp.callback_query_handler(lambda c: c.data.startswith("cat:"))
 async def open_category(call: types.CallbackQuery):
     cat = call.data.split(":")[1]
-
     uid = call.from_user.id
+
     user_sessions.setdefault(uid, {})["current_category"] = cat
 
     # спеціальна логіка для discovery
@@ -462,8 +531,8 @@ async def open_category(call: types.CallbackQuery):
     # 👇 СЕРТИФІКАТИ = ТОВАРИ + 1 ПРИМІТКА
     if cat == "certificates":
         uid = call.from_user.id
-        kb = products_keyboard("certificates", uid)        
-        
+        kb = products_keyboard("certificates", uid)
+
         await call.message.edit_text(
             "🎫 *Подарункові сертифікати:*",
             reply_markup=kb,
@@ -488,6 +557,7 @@ def find_product(pid):
                 return p
     return None
 
+
 @dp.callback_query_handler(lambda c: c.data.startswith("add:"))
 async def add_to_cart(call: types.CallbackQuery):
     uid = call.from_user.id
@@ -507,8 +577,8 @@ async def add_to_cart(call: types.CallbackQuery):
             "name": product["name"],
             "price": product["price"],
             "qty": 0,
-            "label": product.get("label")
-        }
+            "label": product.get("label"),
+        },
     )
     cart[product_id]["qty"] += 1
 
@@ -523,6 +593,7 @@ async def add_to_cart(call: types.CallbackQuery):
         )
     except Exception:
         pass
+
 
 # ================== КОШИК ==================
 
@@ -546,6 +617,7 @@ async def view_cart(call: types.CallbackQuery):
     kb = InlineKeyboardMarkup(row_width=4)
 
     for key, item in cart.items():
+
         # DISCOVERY
         if item.get("type") == "discovery":
             text += (
@@ -576,7 +648,7 @@ async def view_cart(call: types.CallbackQuery):
             kb.row(
                 InlineKeyboardButton("+", callback_data=f"cart_inc:{key}"),
                 InlineKeyboardButton("-", callback_data=f"cart_dec:{key}"),
-                InlineKeyboardButton("🗑", callback_data=f"cart_del:{key}")
+                InlineKeyboardButton("🗑", callback_data=f"cart_del:{key}"),
             )
 
     text += f"\nСума: {total} грн"
@@ -597,7 +669,10 @@ async def view_cart(call: types.CallbackQuery):
 
     # ВАЖЛИВО: edit_text може дати MessageNotModified — ловимо і шлемо новим
     try:
-        await call.message.edit_text(text, reply_markup=kb)
+        await call.message.edit_text(
+            text,
+            reply_markup=kb
+        )
     except Exception:
         pass
 
@@ -613,6 +688,7 @@ async def back_categories(call: types.CallbackQuery):
     )
     await call.answer()
 
+
 # ================== DISCOVERY: старт формування ==================
 
 @dp.callback_query_handler(lambda c: c.data == "discovery_start")
@@ -626,6 +702,7 @@ async def discovery_start(call: types.CallbackQuery):
         reply_markup=discovery_aromas_keyboard([])
     )
     await call.answer()
+
 
 # ================== DISCOVERY: вибір позицій у формуванні сету ==================
 
@@ -656,6 +733,7 @@ async def discovery_toggle(call: types.CallbackQuery):
         reply_markup=discovery_aromas_keyboard(selected)
     )
     await call.answer()
+
 
 @dp.callback_query_handler(lambda c: c.data == "disc_confirm")
 async def discovery_confirm(call: types.CallbackQuery):
@@ -699,14 +777,15 @@ async def discovery_confirm(call: types.CallbackQuery):
     )
     await call.answer()
 
+
 # ================== СЕРТИФІКАТИ ==================
 
 @dp.callback_query_handler(lambda c: c.data == "toggle_physical_certificate")
 async def toggle_physical_certificate(call: types.CallbackQuery):
     uid = call.from_user.id
-
     session = user_sessions.setdefault(uid, {})
     certificates = session.setdefault("certificates", {})
+
     certificates["physical"] = not certificates.get("physical", False)
 
     kb = products_keyboard("certificates", uid)
@@ -727,6 +806,7 @@ async def checkout_start(call: types.CallbackQuery):
     )
     await call.answer()
 
+
 # ================== CHECKOUT: ІМʼЯ ==================
 
 @dp.message_handler(
@@ -746,6 +826,7 @@ async def checkout_name(m: types.Message):
         "📞 Поділіться номером телефону отримувача 👇",
         reply_markup=share_phone_keyboard()
     )
+
 
 # ================== CHECKOUT: ОТРИМАНО НОМЕР ==================
 
@@ -779,6 +860,7 @@ async def checkout_phone_shared(m: types.Message):
         parse_mode="HTML"
     )
 
+
 # ================== CHECKOUT: НОМЕР ПІДТВЕРДЖЕНО ==================
 
 @dp.callback_query_handler(lambda c: c.data == "phone_ok")
@@ -793,6 +875,7 @@ async def phone_ok(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
+
 
 # ================== CHECKOUT: ІНШИЙ НОМЕР ==================
 
@@ -809,6 +892,7 @@ async def phone_other(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
+
 
 # ================== CHECKOUT: РУЧНИЙ НОМЕР ==================
 
@@ -847,7 +931,6 @@ async def checkout_payment(m: types.Message):
     session["checkout"]["delivery"] = m.text.strip()
 
     cart = session.get("cart", {})
-
     has_certificate = cart_has_certificate(cart)
 
     # ❗ КРОК 3: якщо купують сертифікат — ним не можна платити
@@ -896,8 +979,14 @@ async def checkout_payment(m: types.Message):
     else:
         # стандартна логіка (як було)
         kb.add(
-            InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
-            InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit"),
+            InlineKeyboardButton(
+                "💳 Оплата 100%",
+                callback_data="pay_full"
+            ),
+            InlineKeyboardButton(
+                "💵 Передплата 150 грн",
+                callback_data="pay_deposit"
+            ),
         )
 
         # ➕ КНОПКА ОПЛАТИ СЕРТИФІКАТОМ
@@ -906,7 +995,7 @@ async def checkout_payment(m: types.Message):
             kb.add(
                 InlineKeyboardButton(
                     "🎟 Оплатити сертифікатом",
-                    callback_data="enter_certificate"
+                    callback_data="pay_by_certificate"
                 )
             )
 
@@ -915,19 +1004,22 @@ async def checkout_payment(m: types.Message):
             reply_markup=kb
         )
 
+
 # ================== НОВА ФУНКЦІЯ ПО СЕРТИФІКАТАМ ==================
+
 @dp.callback_query_handler(lambda c: c.data == "enter_certificate")
 async def enter_certificate(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions.setdefault(uid, {})
-
     checkout = session.setdefault("checkout", {})
+
     checkout["waiting_certificate"] = True
 
     await call.message.answer(
         "🎟 Введіть код сертифіката одним повідомленням:"
     )
     await call.answer()
+
 
 @dp.message_handler(
     lambda m: (
@@ -940,7 +1032,6 @@ async def receive_certificate_code(m: types.Message):
     checkout = user_sessions[uid]["checkout"]
 
     code = m.text.strip().upper()
-
     valid, nominal = check_certificate_remote(code)
 
     if not valid:
@@ -949,7 +1040,7 @@ async def receive_certificate_code(m: types.Message):
 
         await m.answer(
             "🚫 Сертифікат не знайдено або він вже використаний.\n"
-            "Спробуйте ввести інший код одним повідомленням:",
+            "Спробуйте ввести інший код одним повідомленням:"
         )
         return
 
@@ -1030,6 +1121,7 @@ async def show_order_summary(uid, chat_id):
         parse_mode="Markdown"
     )
 
+
 # ================== CHECKOUT: ОПЛАТА_ВИБІР ==================
 
 @dp.callback_query_handler(lambda c: c.data == "pay_full")
@@ -1061,8 +1153,18 @@ async def pay_full(call: types.CallbackQuery):
         import random
         import string
 
-        part1 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        part2 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        part1 = "".join(
+            random.choices(
+                string.ascii_uppercase + string.digits,
+                k=4
+            )
+        )
+        part2 = "".join(
+            random.choices(
+                string.ascii_uppercase + string.digits,
+                k=4
+            )
+        )
         return f"{part1}-{part2}"
 
     invoice_ref = generate_bot_reference()
@@ -1091,6 +1193,7 @@ async def pay_full(call: types.CallbackQuery):
 
     # формуємо itemsText (простий, стабільний)
     items_text_list = []
+
     for item in session["cart"].values():
         if item.get("type") == "discovery":
             items_text_list.append(
@@ -1099,6 +1202,7 @@ async def pay_full(call: types.CallbackQuery):
         else:
             qty = item.get("qty", 1)
             items_text_list.append(f'{item["name"]} × {qty}')
+
     items_text = "\n".join(items_text_list)
 
     # сертифікати як товар (для генерації)
@@ -1120,7 +1224,8 @@ async def pay_full(call: types.CallbackQuery):
                     "source": "bot",
                     "certificates": certificates,
                     "certificateType": session.get("certificates", {}).get(
-                        "physical", False
+                        "physical",
+                        False
                     ) and "фізичний" or "електронний",
                     "buyerName": session["checkout"].get("name", ""),
                     "buyerPhone": session["checkout"].get("phone", ""),
@@ -1139,9 +1244,9 @@ async def pay_full(call: types.CallbackQuery):
     # =====================================================
     # ✅ КРОК 7: 100% СЕРТИФІКАТ — БЕЗ MONO
     # =====================================================
+
     if mono_amount == 0:
         cert_code = session.get("checkout", {}).get("certificate_code")
-
         ok = send_free_order_to_server(
             order_id=invoice_ref,
             used_certificates=[cert_code] if cert_code else []
@@ -1153,13 +1258,11 @@ async def pay_full(call: types.CallbackQuery):
                 "Дякуємо за замовлення 💛",
                 parse_mode="Markdown"
             )
-
             await finalize_bot_order(uid)
-
         else:
             await call.message.edit_text(
                 "❌ Не вдалося підтвердити оплату сертифікатом.\n"
-                "Спробуйте ще раз або напишіть нам.",
+                "Спробуйте ще раз або напишіть нам."
             )
 
         pending_payments.pop(invoice_ref, None)
@@ -1169,6 +1272,7 @@ async def pay_full(call: types.CallbackQuery):
     # =====================================================
     # 💳 MONO — ЯК БУЛО (СТАБІЛЬНО)
     # =====================================================
+
     payment_url = create_mono_invoice(
         amount=mono_amount,
         description="Оплата замовлення MONAL",
@@ -1194,6 +1298,7 @@ async def pay_full(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
+
 
 @dp.callback_query_handler(lambda c: c.data == "pay_deposit")
 async def pay_deposit(call: types.CallbackQuery):
@@ -1254,6 +1359,42 @@ async def pay_deposit(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
     await call.answer()
+
+# ================== СЕРТИФІКАТИ ПОГАШЕННЯ ==================
+
+@dp.callback_query_handler(lambda c: c.data == "pay_by_certificate")
+async def pay_by_certificate(call: types.CallbackQuery):
+    uid = call.from_user.id
+    session = user_sessions.setdefault(uid, {})
+    checkout = session.setdefault("checkout", {})
+
+    checkout["waiting_certificate"] = True
+
+    await call.message.answer(
+        "🎟 Введіть код сертифіката одним повідомленням:"
+    )
+    await call.answer()
+
+
+@dp.message_handler(
+    lambda m: (
+        "checkout" in user_sessions.get(m.from_user.id, {})
+        and user_sessions[m.from_user.id]["checkout"].get("waiting_certificate") is True
+    )
+)
+async def receive_certificate_code(m: types.Message):
+    uid = m.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    code = m.text.strip().upper()
+    checkout["certificate_code"] = code
+    checkout["waiting_certificate"] = False
+
+    await m.answer(
+        f"🎟 Сертифікат **{code}** збережено.\n"
+        "Перевірка буде на наступному кроці.",
+        parse_mode="Markdown"
+    )
 
 
 # ================== CHECKOUT: ПІДТВЕРДЖЕННЯ ==================
@@ -1319,6 +1460,7 @@ async def confirm_order(call: types.CallbackQuery):
 
     await call.answer()
 
+
 # ================== CART CONTROL ==================
 
 @dp.callback_query_handler(lambda c: c.data.startswith("cart_inc:"))
@@ -1346,6 +1488,7 @@ async def cart_dec(call: types.CallbackQuery):
     await call.answer()
     await view_cart(call)
 
+
 @dp.callback_query_handler(lambda c: c.data.startswith("cart_del:"))
 async def cart_del(call: types.CallbackQuery):
     key = call.data.split(":")[1]
@@ -1356,9 +1499,11 @@ async def cart_del(call: types.CallbackQuery):
     await call.answer("Видалено")
     await view_cart(call)
 
+
 @dp.callback_query_handler(lambda c: c.data == "noop")
 async def noop(call: types.CallbackQuery):
     await call.answer()
+
 
 # ================== ОПЛАТА МОНО ==================
 
@@ -1381,10 +1526,14 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
         "webHookUrl": "https://monal-mono-pay-production.up.railway.app/webhook/mono",
     }
 
-    response = requests.post(url, json=payload, headers=headers)
+    response = requests.post(
+        url,
+        json=payload,
+        headers=headers
+    )
     response.raise_for_status()
-
     data = response.json()
+
     return data["pageUrl"]
 
 # ================== MONO WEBHOOK ==================
@@ -1416,8 +1565,8 @@ async def mono_webhook(request):
     payment_type = order["payment_type"]
 
     # --------- ТІЛЬКИ ТОВАРИ ДЛЯ ТАБЛИЦІ ---------
-    items_text_list = []
 
+    items_text_list = []
     for item in cart.values():
         if item.get("type") == "discovery":
             items_text_list.append(
@@ -1446,11 +1595,11 @@ async def mono_webhook(request):
                 },
                 timeout=8,
             )
-
         except Exception as e:
             print("❌ CERT MARK USED ERROR:", e)
 
     # --------- формуємо повідомлення адміну ---------
+
     text = "✅ *ОПЛАТУ ОТРИМАНО*\n\n"
     text += f"👤 *{checkout.get('name', '—')}*\n"
     text += f"📞 {checkout.get('phone', '—')}\n"
@@ -1481,6 +1630,7 @@ async def mono_webhook(request):
         f"\n💳 *Сплачено:* {paid_amount} грн"
         f"\n📦 *До оплати:* {due_amount} грн"
     )
+
     text += f"\n🧾 ref: {reference}"
 
     await bot.send_message(
@@ -1564,6 +1714,7 @@ async def admin_active_orders(m: types.Message):
 
         await m.answer(text, reply_markup=kb)
 
+
 # =================== 👑 АДМІН: ПОМІТИТИ ЯК ВИКОНАНО ===================
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith("order_done:"))
@@ -1578,7 +1729,6 @@ async def admin_mark_done(call: types.CallbackQuery):
         return
 
     order_id = call.data.split("order_done:", 1)[1].strip()
-
     await call.message.answer(f"🟡 Mark done натиснуто для: {order_id}")
 
     try:
@@ -1639,8 +1789,10 @@ async def admin_completed_orders(m: types.Message):
 
 if __name__ == "__main__":
     app = web.Application()
+
     app.router.add_post("/webhook/telegram", telegram_webhook)
-    app.router.add_post("/mono-webhook", mono_webhook)
+    app.router.add_post("/webhook/mono", mono_webhook)
+
     app.on_startup.append(on_startup)
 
     web.run_app(
@@ -1648,6 +1800,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
-
-
-
