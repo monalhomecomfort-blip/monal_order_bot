@@ -1067,6 +1067,12 @@ async def pay_full(call: types.CallbackQuery):
     checkout = session.get("checkout", {})
     certificate_nominal = checkout.get("certificate_nominal")
 
+    # 🔥 якщо використовується сертифікат — збережемо код для сервера
+    if certificate_nominal:
+        session["checkout"]["usedCertificates"] = [
+            checkout.get("certificate_code")
+        ]
+
     if certificate_nominal:
         paid_by_cert, mono_amount = calculate_amounts_with_certificate(
             total,
@@ -1087,7 +1093,15 @@ async def pay_full(call: types.CallbackQuery):
 
     session.setdefault("checkout", {})
     session["checkout"]["invoice_ref"] = invoice_ref
-    session["checkout"]["payment"] = "100% оплата"
+    
+    # 🔥 ВСТАНОВЛЮЄМО КОРЕКТНИЙ ТИП ОПЛАТИ
+    if certificate_nominal and mono_amount > 0:
+        session["checkout"]["payment"] = "Сертифікат + mono"
+    elif certificate_nominal and mono_amount == 0:
+        session["checkout"]["payment"] = "Сертифікат 100%"
+    else:
+        session["checkout"]["payment"] = "100% оплата"
+
     session["checkout"]["paid"] = False
 
     # ⬇️ СТАБІЛЬНА ЛОГІКА СУМ (НЕ МІНЯЄМО)
@@ -1139,6 +1153,7 @@ async def pay_full(call: types.CallbackQuery):
                     "text": "🛒 Замовлення з Telegram-бота",
                     "source": "bot",
                     "certificates": certificates,
+                    "usedCertificates": session["checkout"].get("usedCertificates", []),
                     "certificateType": session.get("certificates", {}).get(
                         "physical", False
                     ) and "фізичний" or "електронний",
@@ -1688,6 +1703,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
