@@ -1403,7 +1403,7 @@ def create_mono_invoice(amount: int, description: str, invoice_ref: str):
             "destination": description,
         },
         "redirectUrl": "https://monal.com.ua/",
-        "webHookUrl": "https://monal-mono-pay-production.up.railway.app/mono-webhook",
+        "webHookUrl": "https://monal-mono-pay-production.up.railway.app/webhook/mono",
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -1463,13 +1463,15 @@ async def mono_webhook(request):
     if cert_code:
         try:
             requests.post(
-                f"{PAY_SERVER_URL}/mark-certificate-used",
+                f"{PAY_SERVER_URL}/mark-certificates-used",
                 json={
-                    "code": cert_code,
+                    "codes": [cert_code],
                     "orderId": reference,
+                    "source": "bot+mono",
                 },
                 timeout=8,
             )
+
         except Exception as e:
             print("❌ CERT MARK USED ERROR:", e)
 
@@ -1671,6 +1673,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
