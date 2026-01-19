@@ -970,99 +970,90 @@ async def receive_certificate_code(m: types.Message):
 
     # ================== ПЕРЕХІД ДО ОПЛАТИ ==================
 
-    # ================== 100% СЕРТИФІКАТ — ФІНАЛІЗАЦІЯ ==================
+    # ================== 100% СЕРТИФІКАТ ==================
     if mono_amount == 0:
-        # 🔐 гарантуємо orderId
+        # гарантуємо orderId
         if not checkout.get("invoice_ref"):
-            import random
-            import string
-
-            part1 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            part2 = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            checkout["invoice_ref"] = f"{part1}-{part2}"
+            import random, string
+            checkout["invoice_ref"] = (
+                "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                + "-"
+                + "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            )
 
         invoice_ref = checkout["invoice_ref"]
 
-        # 🧾 1️⃣ РЕЄСТРУЄМО ЗАМОВЛЕННЯ (ОБОВʼЯЗКОВО)
-        try:
-            requests.post(
-                f"{MONO_BACKEND_URL}/register-order",
-                json={
-                    "orderId": invoice_ref,
-                    "userId": uid,
-                    "text": "🛒 Замовлення з Telegram-бота",
-                    "source": "bot",
-                    "usedCertificates": [checkout.get("certificate_code")],
-                    "buyerName": checkout.get("name", ""),
-                    "buyerPhone": checkout.get("phone", ""),
-                    "delivery": checkout.get("delivery", ""),
-                    "itemsText": "Оплачено сертифікатом 100%",
-                    "totalAmount": total,
-                    "paidAmount": total,
-                    "dueAmount": 0,
-                    "paymentLabel": "Сертифікат 100%",
-                },
-                timeout=10,
+        # 1️⃣ реєструємо замовлення
+        requests.post(
+            f"{MONO_BACKEND_URL}/register-order",
+            json={
+                "orderId": invoice_ref,
+                "userId": uid,
+                "text": "🛒 Замовлення з Telegram-бота",
+                "source": "bot",
+                "usedCertificates": [checkout.get("certificate_code")],
+                "buyerName": checkout.get("name", ""),
+                "buyerPhone": checkout.get("phone", ""),
+                "delivery": checkout.get("delivery", ""),
+                "itemsText": "Оплачено сертифікатом 100%",
+                "totalAmount": total,
+                "paidAmount": total,
+                "dueAmount": 0,
+                "paymentLabel": "Сертифікат 100%",
+            },
+            timeout=10,
+        )
+
+        # 2️⃣ гасимо сертифікат
+        ok = send_free_order_to_server(
+            order_id=invoice_ref,
+            used_certificates=[checkout.get("certificate_code")]
+        )
+
+        if ok:
+            # 3️⃣ адмін-сповіщення
+            admin_text = (
+                "🔔 *НОВЕ ЗАМОВЛЕННЯ*\n\n"
+                f"👤 {checkout.get('name','—')}\n"
+                f"📞 {checkout.get('phone','—')}\n"
+                f"📦 {checkout.get('delivery','—')}\n"
+                f"💳 Сертифікат 100%\n\n"
+                "🛒 *Товари:*\n"
             )
-        except Exception as e:
-            await m.answer("❌ Не вдалося зареєструвати замовлення.")
-            return
 
-    # 🎟 2️⃣ ПОГАШАЄМО СЕРТИФІКАТ
-    ok = send_free_order_to_server(
-        order_id=invoice_ref,
-        used_certificates=[checkout.get("certificate_code")]
-    )
+            for item in cart.values():
+                if item.get("type") == "discovery":
+                    admin_text += (
+                        f"🎁 {item['name']} — {item['price']} грн\n"
+                        + "\n".join([f" • {a}" for a in item["aromas"]])
+                        + "\n\n"
+                    )
+                else:
+                    qty = item.get("qty", 1)
+                    admin_text += f"{item['name']} × {qty} — {item['price'] * qty} грн\n"
 
-    if ok:
-        # ================== 📩 СПОВІЩЕННЯ АДМІНУ ==================
-        admin_text = "🔔 *НОВЕ ЗАМОВЛЕННЯ*\n\n"
-        admin_text += f"👤 {checkout.get('name', '—')}\n"
-        admin_text += f"📞 {checkout.get('phone', '—')}\n"
-        admin_text += f"📦 {checkout.get('delivery', '—')}\n"
-        admin_text += f"💳 Сертифікат 100%\n\n"
-        admin_text += "🛒 *Товари:*\n"
+            admin_text += (
+                f"\n💰 *Сума замовлення:* {total} грн\n"
+                f"🎟 *Оплачено сертифікатом:* {total} грн\n"
+                f"📦 *До оплати:* 0 грн\n"
+                f"🧾 ref: {invoice_ref}"
+            )
 
-        for item in cart.values():
-            if item.get("type") == "discovery":
-                admin_text += (
-                    f"🎁 {item['name']} — {item['price']} грн\n"
-                    + "\n".join([f" • {a}" for a in item["aromas"]])
-                    + "\n\n"
-                )
-            else:
-                qty = item.get("qty", 1)
-                admin_text += (
-                    f"{item['name']} × {qty} — "
-                    f"{item['price'] * qty} грн\n"
-                )
+            await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
 
-        admin_text += (
-            f"\n💰 *Сума замовлення:* {total} грн\n"
-            f"🎟 *Оплачено сертифікатом:* {total} грн\n"
-            f"📦 *До оплати:* 0 грн\n"
-            f"🧾 ref: {invoice_ref}"
-        )
+            await finalize_order(
+                uid,
+                "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
+            )
+        else:
+            await m.answer("❌ Не вдалося завершити оплату сертифікатом.")
 
-        await bot.send_message(
-            ADMIN_ID,
-            admin_text,
-            parse_mode="Markdown"
-        )
+        return  # ❗ ВИХІД ТІЛЬКИ ТУТ
 
-        await finalize_order(
-            uid,
-            "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
-        )
 
-    else:
-        await m.answer(
-            "❌ Не вдалося завершити оплату сертифікатом. Спробуйте ще раз."
-        )
+    # ================== СЕРТИФІКАТ + MONO ==================
+    # ❗ НІЯКОГО return ВИЩЕ ЦЬОГО МІСЦЯ
 
-    return
-
-    # 2️⃣ Якщо потрібен mono — показуємо кнопку оплати
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
         InlineKeyboardButton(
@@ -1749,6 +1740,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
