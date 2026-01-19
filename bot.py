@@ -298,37 +298,24 @@ def admin_keyboard():
 async def finalize_order(uid: int, text: str):
     """
     ЄДИНА фіналізація замовлення (UX).
-    Робить завжди:
-    - чистить cart + checkout
-    - прибирає reply-клавіатуру (щоб пропала кнопка "📱 Поділитись номером")
-    - повертає кнопку "🛒 Почати замовлення"
     """
-    # 1) чистимо дані
     session = user_sessions.get(uid)
     if session:
         session["cart"] = {}
         session.pop("checkout", None)
 
-    # 2) прибираємо контактну клавіатуру / будь-яку reply
     await bot.send_message(
         uid,
         text,
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=persistent_keyboard()
     )
 
-    # 3) повертаємо нормальний старт
     await bot.send_message(
         uid,
         "Оберіть категорію:",
         reply_markup=categories_keyboard(uid)
     )
-
-    await bot.send_message(
-        uid,
-        "⬇️ Для нового замовлення натисніть кнопку:",
-        reply_markup=persistent_keyboard()
-    )
-
+    
 # ================== CERTIFICATE HELPERS ==================
 
 def cart_has_certificate(cart: dict) -> bool:
@@ -1618,6 +1605,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
