@@ -970,16 +970,25 @@ async def receive_certificate_code(m: types.Message):
 
     # ================== ПЕРЕХІД ДО ОПЛАТИ ==================
 
-    # 1️⃣ Якщо mono не потрібен — одразу запускаємо pay_full
+    # ================== 100% СЕРТИФІКАТ — ФІНАЛІЗАЦІЯ ==================
     if mono_amount == 0:
-        fake_call = types.CallbackQuery(
-            id="cert_only",
-            from_user=m.from_user,
-            chat_instance="cert",
-            message=m,
-            data="pay_full",
+        invoice_ref = checkout.get("invoice_ref")
+
+        ok = send_free_order_to_server(
+            order_id=invoice_ref,
+            used_certificates=[checkout.get("certificate_code")]
         )
-        await pay_full(fake_call)
+
+        if ok:
+            await finalize_order(
+                uid,
+                "✅ Оплату отримано сертифікатом!\n\nДякуємо за замовлення 💛"
+            )
+        else:
+            await m.answer(
+                "❌ Не вдалося завершити оплату сертифікатом. Спробуйте ще раз."
+            )
+
         return
 
     # 2️⃣ Якщо потрібен mono — показуємо кнопку оплати
@@ -1164,7 +1173,7 @@ async def pay_full(call: types.CallbackQuery):
                     "totalAmount": total,
                     "paidAmount": mono_amount,
                     "dueAmount": 0,
-                    "paymentLabel": "100% оплата",
+                    "paymentLabel": "paymentLabel": session["checkout"].get("payment"),
                 },
                 timeout=10,
             )
@@ -1703,6 +1712,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
