@@ -380,7 +380,7 @@ async def finalize_bot_order(uid: int):
 
     await bot.send_message(
         uid,
-        "⬇️",
+        " ",
         reply_markup=ReplyKeyboardRemove()
     )
 
@@ -1673,6 +1673,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
