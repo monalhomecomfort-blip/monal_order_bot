@@ -390,6 +390,36 @@ async def finalize_bot_order(uid: int):
         reply_markup=start_order_keyboard()
     )
 
+async def finish_order_for_user(uid: int, success_text: str):
+    from aiogram.types import ReplyKeyboardRemove
+
+    if uid not in user_sessions:
+        return
+
+    # 1. очистка стану
+    user_sessions[uid]["cart"] = {}
+    user_sessions[uid].pop("checkout", None)
+
+    # 2. зняти будь-яку клавіатуру
+    await bot.send_message(
+        uid,
+        " ",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    # 3. повідомлення про оплату
+    await bot.send_message(
+        uid,
+        success_text
+    )
+
+    # 4. стартова клавіатура
+    await bot.send_message(
+        uid,
+        "🛒 Почніть нове замовлення",
+        reply_markup=start_order_keyboard()
+    )
+
 # ================== ХЕНДЛЕР/START ==================
 
 @dp.message_handler(commands=["start"])
@@ -1129,29 +1159,7 @@ async def pay_full(call: types.CallbackQuery):
     # =====================================================
     # ✅ КРОК 7: 100% СЕРТИФІКАТ — БЕЗ MONO
     # =====================================================
-    if mono_amount == 0:
-        cert_code = session.get("checkout", {}).get("certificate_code")
-
-        ok = send_free_order_to_server(
-            order_id=invoice_ref,
-            used_certificates=[cert_code] if cert_code else []
-        )
-
-        if ok:
-            await call.message.edit_text(
-                "✅ *Оплату отримано сертифікатом!*\n\n"
-                "Дякуємо за замовлення 💛",
-                parse_mode="Markdown"
-            )
-
-            await finalize_bot_order(uid)
-
-        else:
-            await call.message.edit_text(
-                "❌ Не вдалося підтвердити оплату сертифікатом.\n"
-                "Спробуйте ще раз або напишіть нам.",
-            )
-
+    if mono_amount == 0:        
         pending_payments.pop(invoice_ref, None)
         await call.answer()
         return
@@ -1535,13 +1543,10 @@ async def mono_webhook(request):
         print("❌ BOT → ORDERS_LOG ERROR:", e)
 
     # ✅ ПОВІДОМЛЕННЯ ПОКУПЦЮ
-    await bot.send_message(
+    await finish_order_for_user(
         user_id,
-        "✅ Оплату отримано!\n\n"
-        "Дякуємо за замовлення 💛",
+        "✅ Оплату отримано!\n\nДякуємо за замовлення 💛"
     )
-
-    await finalize_bot_order(user_id)
 
     # прибираємо з черги
     pending_payments.pop(reference, None)
@@ -1673,6 +1678,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
