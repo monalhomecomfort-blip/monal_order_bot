@@ -296,13 +296,18 @@ def admin_keyboard():
     return kb
 
 async def finalize_order(uid: int, text: str):
-    """
-    ЄДИНА фіналізація замовлення (UX).
-    """
     session = user_sessions.get(uid)
     if session:
         session["cart"] = {}
         session.pop("checkout", None)
+
+    # прибрати всі "очікування оплати" цього користувача
+    refs_to_remove = [
+        ref for ref, data in pending_payments.items()
+        if data.get("user_id") == uid
+    ]
+    for ref in refs_to_remove:
+        pending_payments.pop(ref, None)
 
     await bot.send_message(
         uid,
@@ -1749,6 +1754,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
