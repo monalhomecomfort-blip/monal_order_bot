@@ -492,7 +492,7 @@ async def add_to_cart(call: types.CallbackQuery):
         return
 
     session = user_sessions.setdefault(uid, {"cart": {}})
-    cart = session.setdefault("cart", [])
+    cart = session.setdefault("cart", {})
 
     cart[product_id] = cart.get(
         product_id,
@@ -1351,7 +1351,7 @@ async def pay_deposit(call: types.CallbackQuery):
 async def confirm_order(call: types.CallbackQuery):
     uid = call.from_user.id
     session = user_sessions[uid]
-    cart = session.setdefault("cart", [])
+    cart = session.setdefault("cart", {})
     checkout = session.setdefault("checkout", {})
 
     # повідомлення адміну
@@ -1409,10 +1409,9 @@ async def confirm_order(call: types.CallbackQuery):
         parse_mode="Markdown"
     )
 
-    await call.message.edit_text(
-        "✅ *Замовлення прийнято!*\n\n"
-        "Ми зв’яжемось з вами для підтвердження 💛",
-        parse_mode="Markdown"
+    await finalize_order(
+        uid,
+        "✅ Замовлення прийнято!\n\nМи зв’яжемось з вами для підтвердження 💛"
     )
     
     await call.answer()
@@ -1754,6 +1753,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
