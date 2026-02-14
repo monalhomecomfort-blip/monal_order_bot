@@ -115,7 +115,7 @@ PRODUCTS = {
     ],
     "gifts": [
         {"id": "g1", "name": "FAIRYTALE", "price": 3199},
-        {"id": "g2", "name": "TEN MINI 10х3мл", "price": 949},
+        {"id": "g2", "name": "TEN MINI 10х3мл", "price": 750},
     ],
 }
 
@@ -1753,6 +1753,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8080"))
     )
+
 
 
 
