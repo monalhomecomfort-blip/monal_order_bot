@@ -836,6 +836,12 @@ def loyalty_email_keyboard():
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
         InlineKeyboardButton(
+            "⬅️ Повернутись до кошика",
+            callback_data="view_cart"
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
             "Пропустити",
             callback_data="skip_loyalty_email"
         )
@@ -894,6 +900,9 @@ async def show_payment_options(message, uid: int):
             InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
             InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit"),
             InlineKeyboardButton("🎟 Оплатити сертифікатом", callback_data="enter_certificate"),
+        )
+        kb.add(
+            InlineKeyboardButton("⬅️ Повернутись до кошика", callback_data="view_cart")
         )
 
         await message.answer(
@@ -981,6 +990,13 @@ async def skip_loyalty_email(call: types.CallbackQuery):
         return
 
     checkout = session["checkout"]
+
+    if checkout.get("waiting_loyalty_email") is not True:
+        await call.answer(
+            "Цей крок уже пройдений.",
+            show_alert=True
+        )
+        return
 
     checkout["loyalty_email"] = ""
     checkout["waiting_loyalty_email"] = False
