@@ -962,7 +962,25 @@ async def receive_loyalty_email(m: types.Message):
 @dp.callback_query_handler(lambda c: c.data == "skip_loyalty_email")
 async def skip_loyalty_email(call: types.CallbackQuery):
     uid = call.from_user.id
-    checkout = user_sessions[uid]["checkout"]
+    session = user_sessions.get(uid)
+
+    if not session or "checkout" not in session:
+        user_sessions.setdefault(uid, {"cart": {}})
+
+        await call.message.answer(
+            "Сесія оформлення оновилась. Почніть замовлення ще раз 👇",
+            reply_markup=persistent_keyboard()
+        )
+
+        await call.message.answer(
+            "Оберіть категорію товарів:",
+            reply_markup=categories_keyboard(uid)
+        )
+
+        await call.answer()
+        return
+
+    checkout = session["checkout"]
 
     checkout["loyalty_email"] = ""
     checkout["waiting_loyalty_email"] = False
