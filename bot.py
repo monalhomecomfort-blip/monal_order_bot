@@ -73,7 +73,7 @@ CATEGORIES = {
 
 PRODUCTS = {
     "diffusers": [
-        {"id": "d1", "name": "FAIRYTALE 200мл", "price": 15},
+        {"id": "d1", "name": "FAIRYTALE 200мл", "price": 1590},
         {"id": "d2", "name": "VESPER 200мл", "price": 1590},
         {"id": "d3", "name": "NOCTURNE 200мл", "price": 1590},
         {"id": "d4", "name": "ROSALYA 200мл", "price": 1590},
