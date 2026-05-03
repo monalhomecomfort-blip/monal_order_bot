@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import requests
 import uuid
 
@@ -824,27 +825,30 @@ async def checkout_phone_manual(m: types.Message):
         parse_mode="Markdown"
     )
 
-# ================== CHECKOUT: ОПЛАТА ==================
+# ================== CHECKOUT: Е-МАЙЛ І ВИБІР ОПЛАТИ ==================
 
-@dp.message_handler(
-    lambda m: (
-        "checkout" in user_sessions.get(m.from_user.id, {})
-        and "phone" in user_sessions[m.from_user.id]["checkout"]
-        and "delivery" not in user_sessions[m.from_user.id]["checkout"]
+def is_valid_email(value: str) -> bool:
+    value = (value or "").strip()
+    return re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", value) is not None
+
+
+def loyalty_email_keyboard():
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton(
+            "Пропустити",
+            callback_data="skip_loyalty_email"
+        )
     )
-)
-async def checkout_payment(m: types.Message):
-    uid = m.from_user.id
+    return kb
+
+
+async def show_payment_options(message, uid: int):
     session = user_sessions[uid]
-
-    # зберігаємо доставку
-    session["checkout"]["delivery"] = m.text.strip()
-
     cart = session.get("cart", {})
 
     has_certificate = cart_has_certificate(cart)
 
-    # ❗ КРОК 3: якщо купують сертифікат — ним не можна платити
     has_certificate_product = False
     for item in cart.values():
         if "сертифікат" in item.get("name", "").lower():
@@ -854,7 +858,6 @@ async def checkout_payment(m: types.Message):
     kb = InlineKeyboardMarkup(row_width=1)
 
     if has_certificate:
-        # ❗ ТІЛЬКИ 100% ОПЛАТА
         kb.add(
             InlineKeyboardButton(
                 "💳 Оплата 100%",
@@ -862,7 +865,6 @@ async def checkout_payment(m: types.Message):
             )
         )
 
-        # ➕ КНОПКА ВВОДУ СЕРТИФІКАТА (якщо дозволено)
         if can_apply_certificate(cart):
             kb.add(
                 InlineKeyboardButton(
@@ -882,23 +884,95 @@ async def checkout_payment(m: types.Message):
                 "при купівлі сертифікату."
             )
 
-        await m.answer(
+        await message.answer(
             warning_text,
             reply_markup=kb
         )
 
     else:
-        # стандартна логіка (як було)
         kb.add(
             InlineKeyboardButton("💳 Оплата 100%", callback_data="pay_full"),
             InlineKeyboardButton("💵 Передплата 150 грн", callback_data="pay_deposit"),
             InlineKeyboardButton("🎟 Оплатити сертифікатом", callback_data="enter_certificate"),
         )
 
-        await m.answer(
+        await message.answer(
             "💳 Оберіть спосіб оплати:",
             reply_markup=kb
         )
+
+# ================== CHECKOUT: ДОСТАВКА → EMAIL ЛОЯЛЬНОСТІ ==================
+
+@dp.message_handler(
+    lambda m: (
+        "checkout" in user_sessions.get(m.from_user.id, {})
+        and "phone" in user_sessions[m.from_user.id]["checkout"]
+        and "delivery" not in user_sessions[m.from_user.id]["checkout"]
+    )
+)
+async def checkout_payment(m: types.Message):
+    uid = m.from_user.id
+    session = user_sessions[uid]
+
+    # зберігаємо доставку
+    session["checkout"]["delivery"] = m.text.strip()
+
+    # просимо email для програми лояльності
+    session["checkout"]["waiting_loyalty_email"] = True
+
+    await m.answer(
+        "💛 Якщо ви зареєстровані в програмі лояльності Mōnal, "
+        "введіть email, який вказували при реєстрації.\n\n"
+        "Якщо не зареєстровані або не хочете привʼязувати замовлення, натисніть «Пропустити».",
+        reply_markup=loyalty_email_keyboard()
+    )
+
+# ================== CHECKOUT: EMAIL ЛОЯЛЬНОСТІ ==================
+
+@dp.message_handler(
+    lambda m: (
+        "checkout" in user_sessions.get(m.from_user.id, {})
+        and user_sessions[m.from_user.id]["checkout"].get("waiting_loyalty_email") is True
+    )
+)
+async def receive_loyalty_email(m: types.Message):
+    uid = m.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    email = m.text.strip().lower()
+
+    if not is_valid_email(email):
+        await m.answer(
+            "Email виглядає некоректно.\n"
+            "Введіть email ще раз або натисніть «Пропустити».",
+            reply_markup=loyalty_email_keyboard()
+        )
+        return
+
+    checkout["loyalty_email"] = email
+    checkout["waiting_loyalty_email"] = False
+
+    await m.answer(
+        "✅ Email збережено для привʼязки до програми лояльності."
+    )
+
+    await show_payment_options(m, uid)
+
+
+@dp.callback_query_handler(lambda c: c.data == "skip_loyalty_email")
+async def skip_loyalty_email(call: types.CallbackQuery):
+    uid = call.from_user.id
+    checkout = user_sessions[uid]["checkout"]
+
+    checkout["loyalty_email"] = ""
+    checkout["waiting_loyalty_email"] = False
+
+    await call.message.answer(
+        "Добре, продовжуємо без привʼязки до програми лояльності."
+    )
+
+    await show_payment_options(call.message, uid)
+    await call.answer()
 
 # ================== НОВА ФУНКЦІЯ ПО СЕРТИФІКАТАМ ==================
 @dp.callback_query_handler(lambda c: c.data == "enter_certificate")
@@ -999,6 +1073,7 @@ async def receive_certificate_code(m: types.Message):
                 json={
                     "orderId": invoice_ref,
                     "userId": uid,
+                    "userEmail": checkout.get("loyalty_email", ""),
                     "text": "🛒 Замовлення з Telegram-бота",
                     "source": "bot",
                     "usedCertificates": [checkout.get("certificate_code")],
@@ -1236,6 +1311,7 @@ async def pay_full(call: types.CallbackQuery):
                 json={
                     "orderId": invoice_ref,
                     "userId": uid,
+                    "userEmail": session["checkout"].get("loyalty_email", ""),
                     "text": "🛒 Замовлення з Telegram-бота",
                     "source": "bot",
                     "certificates": certificates,
@@ -1319,6 +1395,46 @@ async def pay_deposit(call: types.CallbackQuery):
         "checkout": session["checkout"],
         "payment_type": "Передплата 150 грн",
     }
+
+    # ✅ РЕЄСТРУЄМО ЗАМОВЛЕННЯ НА БЕКЕНДІ ДЛЯ ПЕРЕДПЛАТИ
+    items_text_list = []
+
+    for item in session["cart"].values():
+        if item.get("type") == "discovery":
+            items_text_list.append(
+                item["name"] + ":\n" + "\n".join(item["aromas"])
+            )
+        else:
+            qty = item.get("qty", 1)
+            items_text_list.append(f'{item["name"]} × {qty}')
+
+    items_text = "\n".join(items_text_list)
+
+    if not MONO_BACKEND_URL:
+        print("❌ MONO_BACKEND_URL missing — register-order skipped")
+    else:
+        try:
+            requests.post(
+                f"{MONO_BACKEND_URL}/register-order",
+                json={
+                    "orderId": invoice_ref,
+                    "userId": uid,
+                    "userEmail": session["checkout"].get("loyalty_email", ""),
+                    "text": "🛒 Замовлення з Telegram-бота",
+                    "source": "bot",
+                    "buyerName": session["checkout"].get("name", ""),
+                    "buyerPhone": session["checkout"].get("phone", ""),
+                    "delivery": session["checkout"].get("delivery", ""),
+                    "itemsText": items_text,
+                    "totalAmount": total,
+                    "paidAmount": deposit,
+                    "dueAmount": total - deposit,
+                    "paymentLabel": session["checkout"].get("payment"),
+                },
+                timeout=10,
+            )
+        except Exception as e:
+            print("❌ REGISTER ORDER DEPOSIT ERROR:", e)
 
     payment_url = create_mono_invoice(
         amount=deposit,
