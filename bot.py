@@ -475,7 +475,7 @@ def products_keyboard(cat_key, user_id):
 
         else:
             button_text = (
-                f"▫️ {p['name']} — {p['price']} грн"
+                f"⛔ {p['name']} — {p['price']} грн"
                 f" · Нема в наявності"
             )
             callback_data = f"out:{p['id']}"
