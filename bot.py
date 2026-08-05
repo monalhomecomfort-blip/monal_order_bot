@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 import requests
 import uuid
 
@@ -129,10 +130,261 @@ PRODUCTS = {
         {"id": "c3500", "name": "Сертифікат 3500 грн", "price": 3500, "label": "Сертифікат"},
         {"id": "c5000", "name": "Сертифікат 5000 грн", "price": 5000, "label": "Сертифікат"},
     ],
-    "gifts": [        
+    "gifts": [
         {"id": "g1", "name": "TEN MINI 10х3мл", "price": 750},
     ],
 }
+
+# ================== НАЯВНІСТЬ ТОВАРІВ ==================
+
+BOT_CATEGORY_SLUGS = {
+    "diffusers": {
+        "aromadiffusers",
+        "diffusers",
+    },
+    "home": {
+        "parfums",
+        "home",
+        "home-parfums",
+    },
+    "refill": {
+        "refills",
+        "refill",
+    },
+    "certificates": {
+        "certificates",
+    },
+    "gifts": {
+        "gift-sets",
+        "gifts",
+    },
+}
+
+BOT_PUBLIC_CATALOG = []
+BOT_PUBLIC_CATALOG_LOADED_AT = 0.0
+BOT_PUBLIC_CATALOG_TTL_SECONDS = 15
+
+
+def normalize_bot_catalog_text(value) -> str:
+    text = str(value or "").strip().lower()
+
+    text = (
+        text
+        .replace("ё", "е")
+        .replace("’", "")
+        .replace("ʼ", "")
+        .replace("'", "")
+        .replace("×", "x")
+        .replace("х", "x")
+    )
+
+    text = re.sub(
+        r"(\d+)\s*(?:мл|ml)\b",
+        r"\1ml",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    text = re.sub(
+        r"[^a-zа-яіїєґ0-9]+",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def get_bot_product_search_name(product: dict) -> str:
+    text = normalize_bot_catalog_text(
+        product.get("name", "")
+    )
+
+    text = re.sub(
+        r"\b\d+x\d+ml\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    text = re.sub(
+        r"\b\d+ml\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    text = re.sub(
+        r"\b\d+\s*грн\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def load_bot_public_catalog(force_refresh: bool = False) -> list:
+    global BOT_PUBLIC_CATALOG
+    global BOT_PUBLIC_CATALOG_LOADED_AT
+
+    now = time.monotonic()
+
+    cache_is_actual = (
+        BOT_PUBLIC_CATALOG
+        and not force_refresh
+        and (
+            now - BOT_PUBLIC_CATALOG_LOADED_AT
+            < BOT_PUBLIC_CATALOG_TTL_SECONDS
+        )
+    )
+
+    if cache_is_actual:
+        return BOT_PUBLIC_CATALOG
+
+    try:
+        response = requests.get(
+            f"{PAY_SERVER_URL}/api/products-catalog-public",
+            timeout=8,
+        )
+
+        data = response.json() if response.ok else {}
+        products = data.get("products", [])
+
+        if data.get("ok") and isinstance(products, list):
+            BOT_PUBLIC_CATALOG = products
+            BOT_PUBLIC_CATALOG_LOADED_AT = now
+
+    except Exception as error:
+        print(
+            "❌ BOT PUBLIC CATALOG ERROR:",
+            error,
+        )
+
+    return BOT_PUBLIC_CATALOG
+
+
+def find_bot_catalog_product(
+    bot_product: dict,
+    cat_key: str,
+    force_refresh: bool = False,
+):
+    catalog = load_bot_public_catalog(
+        force_refresh=force_refresh
+    )
+
+    if not catalog:
+        return None
+
+    allowed_category_slugs = BOT_CATEGORY_SLUGS.get(
+        cat_key,
+        set(),
+    )
+
+    bot_price = float(
+        bot_product.get("price", 0) or 0
+    )
+
+    search_name = get_bot_product_search_name(
+        bot_product
+    )
+
+    candidates = []
+
+    for catalog_product in catalog:
+        category_slug = str(
+            catalog_product.get("category_slug", "")
+        ).strip().lower()
+
+        if (
+            allowed_category_slugs
+            and category_slug not in allowed_category_slugs
+        ):
+            continue
+
+        catalog_price = float(
+            catalog_product.get("price", 0) or 0
+        )
+
+        if (
+            bot_price > 0
+            and catalog_price > 0
+            and abs(catalog_price - bot_price) > 0.01
+        ):
+            continue
+
+        candidates.append(catalog_product)
+
+    matched_products = []
+
+    for catalog_product in candidates:
+        catalog_text = normalize_bot_catalog_text(
+            " ".join([
+                str(
+                    catalog_product.get(
+                        "product_key",
+                        "",
+                    )
+                ),
+                str(
+                    catalog_product.get(
+                        "display_name",
+                        "",
+                    )
+                ),
+                str(
+                    catalog_product.get(
+                        "product_label",
+                        "",
+                    )
+                ),
+                str(
+                    catalog_product.get(
+                        "category_slug",
+                        "",
+                    )
+                ),
+            ])
+        )
+
+        if (
+            search_name
+            and search_name in catalog_text
+        ):
+            matched_products.append(
+                catalog_product
+            )
+
+    if len(matched_products) == 1:
+        return matched_products[0]
+
+    if matched_products:
+        return matched_products[0]
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    return None
+
+
+def is_bot_product_in_stock(
+    bot_product: dict,
+    cat_key: str,
+    force_refresh: bool = False,
+) -> bool:
+    catalog_product = find_bot_catalog_product(
+        bot_product,
+        cat_key,
+        force_refresh=force_refresh,
+    )
+
+    if not catalog_product:
+        return True
+
+    return int(
+        catalog_product.get("is_in_stock", 1) or 0
+    ) == 1
+
 
 user_sessions = {}
 pending_payments = {}
@@ -210,10 +462,28 @@ def products_keyboard(cat_key, user_id):
     kb = InlineKeyboardMarkup(row_width=1)
 
     for p in PRODUCTS.get(cat_key, []):
+        is_in_stock = is_bot_product_in_stock(
+            p,
+            cat_key
+        )
+
+        if is_in_stock:
+            button_text = (
+                f"{p['name']} — {p['price']} грн"
+            )
+            callback_data = f"add:{p['id']}"
+
+        else:
+            button_text = (
+                f"▫️ {p['name']} — {p['price']} грн"
+                f" · Нема в наявності"
+            )
+            callback_data = f"out:{p['id']}"
+
         kb.add(
             InlineKeyboardButton(
-                f"{p['name']} — {p['price']} грн",
-                callback_data=f"add:{p['id']}"
+                button_text,
+                callback_data=callback_data
             )
         )
 
@@ -496,6 +766,16 @@ def find_product(pid):
                 return p
     return None
 
+
+@dp.callback_query_handler(
+    lambda c: c.data.startswith("out:")
+)
+async def out_of_stock_product(
+    call: types.CallbackQuery
+):
+    await call.answer("Нема в наявності")
+
+
 @dp.callback_query_handler(lambda c: c.data.startswith("add:"))
 async def add_to_cart(call: types.CallbackQuery):
     uid = call.from_user.id
@@ -507,6 +787,30 @@ async def add_to_cart(call: types.CallbackQuery):
         return
 
     session = user_sessions.setdefault(uid, {"cart": {}})
+    current_category = session.get("current_category")
+
+    if (
+        current_category
+        and not is_bot_product_in_stock(
+            product,
+            current_category,
+            force_refresh=True
+        )
+    ):
+        await call.answer("Нема в наявності")
+
+        try:
+            await call.message.edit_reply_markup(
+                reply_markup=products_keyboard(
+                    current_category,
+                    uid
+                )
+            )
+        except Exception:
+            pass
+
+        return
+
     cart = session.setdefault("cart", {})
 
     cart[product_id] = cart.get(
