@@ -65,7 +65,8 @@ async def on_startup(app):
 
 CATEGORIES = {
     "diffusers": "🧴 Аромадифузери",
-    "home": "🏠 Парфумерія для дому",
+    "home_100": "🏠 Парфуми для дому і текстилю 100 мл",
+    "home_15": "🧳 Парфуми для дому і текстилю 15 мл",
     "discovery": "🎁 Discovery set",
     "refill": "♻️ Рефіли для аромадифузерів",
     "certificates": "🎟 Подарункові сертифікати",
@@ -86,7 +87,7 @@ PRODUCTS = {
         {"id": "d10", "name": "GOLDEN RUM 200мл", "price": 1590},
         {"id": "d11", "name": "GREEN HAVEN 200мл", "price": 1590},
     ],
-    "home": [
+    "home_100": [
         {"id": "h1", "name": "FAIRYTALE 100мл", "price": 990},
         {"id": "h2", "name": "VESPER 100мл", "price": 990},
         {"id": "h3", "name": "NOCTURNE 100мл", "price": 990},
@@ -98,6 +99,8 @@ PRODUCTS = {
         {"id": "h9", "name": "SHADOW OF FIG 100мл", "price": 990},
         {"id": "h10", "name": "GOLDEN RUM 100мл", "price": 990},
         {"id": "h11", "name": "GREEN HAVEN 100мл", "price": 990},
+    ],
+    "home_15": [
         {"id": "h12", "name": "LEATHER ABSOLUTE 15мл", "price": 385},
         {"id": "h13", "name": "AMBER ELITE 15мл", "price": 385},
         {"id": "h14", "name": "BOIS NOIR 15мл", "price": 385},
@@ -110,7 +113,7 @@ PRODUCTS = {
         {"id": "h21", "name": "CROWN OF OLIVE 15мл", "price": 385},
         {"id": "h22", "name": "SHADOW OF FIG 15мл", "price": 385},
         {"id": "h23", "name": "GOLDEN RUM 15мл", "price": 385},
-        {"id": "h24", "name": "GREEN HAVEN 15мл", "price": 385},        
+        {"id": "h24", "name": "GREEN HAVEN 15мл", "price": 385},
     ],
     "refill": [
         {"id": "r1", "name": "VESPER 275мл", "price": 1300},
@@ -142,7 +145,12 @@ BOT_CATEGORY_SLUGS = {
         "aromadiffusers",
         "diffusers",
     },
-    "home": {
+    "home_100": {
+        "parfums",
+        "home",
+        "home-parfums",
+    },
+    "home_15": {
         "parfums",
         "home",
         "home-parfums",
